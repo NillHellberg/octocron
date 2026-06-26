@@ -1,164 +1,288 @@
 package scheduler
 
 import (
+	"fmt"
+	"encoding/json"
+	"log"
 	"sync"
+	"time"
 
 	"github.com/NillHellberg/octocron/api/gen/octocron"
+	"github.com/NillHellberg/octocron/internal/executor"
+	"github.com/NillHellberg/octocron/internal/fsm"
+	"github.com/hashicorp/raft"
 	"github.com/robfig/cron/v3"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// JobRecord хранит задание и его cron-сущность.
-type JobRecord struct {
-	Job      *octocron.Job
-	cronID   cron.EntryID
-	enabled  bool
-}
-
-// Scheduler управляет заданиями.
 type Scheduler struct {
-	mu    sync.RWMutex
-	jobs  map[string]*JobRecord
-	cr    *cron.Cron
-	exec  Executor
+	exec         executor.SSHExecutor
+	raft         *raft.Raft
+	store        *fsm.JobStore
+
+	stopCh       chan struct{}
+	leaderCh     chan bool
+	isLeader     bool
+	mu           sync.Mutex
+
+	lastLocalRun map[string]time.Time
+	localRunMu   sync.Mutex
 }
 
-// Executor выполняет команды (пока локально).
-type Executor interface {
-	Execute(cmd string) (exitCode int, output, errStr string)
-}
-
-// LocalExecutor реализует запуск команды локально.
-type LocalExecutor struct{}
-
-func (e LocalExecutor) Execute(cmd string) (int, string, string) {
-	// Заглушка — будем использовать os/exec позже
-	return 0, "local executed: " + cmd, ""
-}
-
-func NewScheduler(exec Executor) *Scheduler {
-	if exec == nil {
-		exec = &LocalExecutor{}
+func NewScheduler(r *raft.Raft, store *fsm.JobStore) *Scheduler {
+	s := &Scheduler{
+		exec:         *executor.NewSSHExecutor(),
+		raft:         r,
+		store:        store,
+		stopCh:       make(chan struct{}),
+		leaderCh:     make(chan bool, 1),
+		lastLocalRun: make(map[string]time.Time),
 	}
-	return &Scheduler{
-		jobs: make(map[string]*JobRecord),
-		cr:   cron.New(cron.WithSeconds()),
-		exec: exec,
+	go s.observeLeadership()
+	go s.run()
+	return s
+}
+
+func (s *Scheduler) observeLeadership() {
+	for range s.raft.LeaderCh() {
+		isLeader := s.raft.State() == raft.Leader
+		s.mu.Lock()
+		s.isLeader = isLeader
+		s.mu.Unlock()
+		select {
+		case s.leaderCh <- isLeader:
+		default:
+		}
+		if isLeader {
+			log.Println("I am leader, starting stateless cron")
+		} else {
+			log.Println("Not leader, stopping stateless cron")
+			s.localRunMu.Lock()
+			s.lastLocalRun = make(map[string]time.Time)
+			s.localRunMu.Unlock()
+		}
 	}
 }
 
-// Start запускает cron-движок.
-func (s *Scheduler) Start() {
-	s.cr.Start()
+func (s *Scheduler) run() {
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			s.mu.Lock()
+			leader := s.isLeader
+			s.mu.Unlock()
+			if !leader {
+				continue
+			}
+			s.checkAndExecute()
+		case <-s.stopCh:
+			return
+		}
+	}
 }
 
-// Stop останавливает cron-движок.
-func (s *Scheduler) Stop() {
-	ctx := s.cr.Stop()
-	<-ctx.Done()
+func (s *Scheduler) checkAndExecute() {
+	jobs := s.store.ListJobs()
+	now := time.Now()
+
+	for _, job := range jobs {
+		if !job.Enabled {
+			continue
+		}
+		shouldRun, err := s.shouldRun(job, now)
+		if err != nil {
+			log.Printf("Error parsing cron expression for job %s: %v", job.Id, err)
+			continue
+		}
+		if !shouldRun {
+			continue
+		}
+
+		// Выполняем для каждого target
+		for _, targetID := range job.Targets {
+			target, err := s.store.GetTarget(targetID)
+			if err != nil {
+				log.Printf("Job %s: target %s not found: %v", job.Id, targetID, err)
+				continue
+			}
+
+			startTime := time.Now()
+			log.Printf("Executing job %s on %s (%s): %s", job.Id, target.Name, target.Address, job.Command)
+			exitCode, stdout, stderr, err := s.exec.Execute(
+				target.Address,
+				int(target.Port),
+				target.User,
+				target.KeyPath,
+				job.Command,
+			)
+			endTime := time.Now()
+			log.Printf("Job %s on %s finished: code=%d", job.Id, target.Name, exitCode)
+
+			// Сохраняем результат выполнения в FSM
+			execution := &octocron.JobExecution{
+				JobId:     job.Id,
+				TargetId:  targetID,
+				StartTime: timestamppb.New(startTime),
+				EndTime:   timestamppb.New(endTime),
+				ExitCode:  int32(exitCode),
+				Output:    stdout,
+				Error:     stderr,
+			}
+			if err != nil {
+				// SSH-ошибка тоже сохраняется
+				execution.Error = fmt.Sprintf("ssh error: %v", err)
+				execution.ExitCode = -1
+			}
+			cmd := fsm.Command{
+				Type:      fsm.CmdAddJobExecution,
+				Execution: execution,
+			}
+			data, err := json.Marshal(cmd)
+			if err != nil {
+				log.Printf("Failed to marshal execution for job %s: %v", job.Id, err)
+				continue
+			}
+			f := s.raft.Apply(data, 5*time.Second)
+			if f.Error() != nil {
+				log.Printf("Failed to save execution for job %s: %v", job.Id, f.Error())
+			}
+		}
+
+		// Обновляем last_run в FSM
+		newLastRun := timestamppb.New(now)
+		cmd := fsm.Command{
+			Type:    fsm.CmdUpdateJobLastRun,
+			Job:     &octocron.Job{Id: job.Id},
+			LastRun: newLastRun,
+		}
+		data, err := json.Marshal(cmd)
+		if err != nil {
+			log.Printf("Failed to marshal update command for job %s: %v", job.Id, err)
+			continue
+		}
+		f := s.raft.Apply(data, 5*time.Second)
+		if f.Error() != nil {
+			log.Printf("Failed to apply update for job %s: %v", job.Id, f.Error())
+		}
+
+		s.localRunMu.Lock()
+		s.lastLocalRun[job.Id] = now
+		s.localRunMu.Unlock()
+	}
 }
 
-// AddJob добавляет задание и запускает его по cron.
+func (s *Scheduler) shouldRun(job *octocron.Job, now time.Time) (bool, error) {
+	parser := cron.NewParser(cron.SecondOptional | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor)
+	schedule, err := parser.Parse(job.CronExpression)
+	if err != nil {
+		return false, err
+	}
+
+	var lastTime time.Time
+	if job.LastRun != nil {
+		lastTime = job.LastRun.AsTime()
+	}
+
+	s.localRunMu.Lock()
+	if localRun, ok := s.lastLocalRun[job.Id]; ok && localRun.After(lastTime) {
+		lastTime = localRun
+	}
+	s.localRunMu.Unlock()
+
+	next := schedule.Next(lastTime)
+	return !next.After(now), nil
+}
+
 func (s *Scheduler) AddJob(job *octocron.Job) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if _, exists := s.jobs[job.Id]; exists {
-		return ErrJobExists
+	if s.raft.State() != raft.Leader {
+		return ErrNotLeader
 	}
-
-	rec := &JobRecord{
-		Job:     job,
-		enabled: job.Enabled,
+	cmd := fsm.Command{
+		Type: fsm.CmdCreateJob,
+		Job:  job,
 	}
-
-	if job.Enabled {
-		cronID, err := s.cr.AddFunc(job.CronExpression, func() {
-			exitCode, out, errStr := s.exec.Execute(job.Command)
-			_ = exitCode // TODO: сохранять историю выполнения
-			_ = out
-			_ = errStr
-		})
-		if err != nil {
-			return err
-		}
-		rec.cronID = cronID
+	data, err := json.Marshal(cmd)
+	if err != nil {
+		return err
 	}
-
-	s.jobs[job.Id] = rec
-	return nil
+	f := s.raft.Apply(data, 10*time.Second)
+	return f.Error()
 }
 
-// UpdateJob обновляет задание (пока заглушка).
-func (s *Scheduler) UpdateJob(job *octocron.Job) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	rec, exists := s.jobs[job.Id]
-	if !exists {
-		return ErrJobNotFound
-	}
-
-	// Удаляем старую cron-запись, если была активна
-	if rec.enabled {
-		s.cr.Remove(rec.cronID)
-	}
-
-	rec.Job = job
-	rec.enabled = job.Enabled
-	if job.Enabled {
-		cronID, err := s.cr.AddFunc(job.CronExpression, func() {
-			// выполнение
-		})
-		if err != nil {
-			return err
-		}
-		rec.cronID = cronID
-	} else {
-		rec.cronID = 0
-	}
-	return nil
-}
-
-// RemoveJob удаляет задание.
 func (s *Scheduler) RemoveJob(id string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	rec, exists := s.jobs[id]
-	if !exists {
-		return ErrJobNotFound
+	if s.raft.State() != raft.Leader {
+		return ErrNotLeader
 	}
-	if rec.enabled {
-		s.cr.Remove(rec.cronID)
+	cmd := fsm.Command{
+		Type: fsm.CmdDeleteJob,
+		Job:  &octocron.Job{Id: id},
 	}
-	delete(s.jobs, id)
-	return nil
+	data, err := json.Marshal(cmd)
+	if err != nil {
+		return err
+	}
+	f := s.raft.Apply(data, 10*time.Second)
+	return f.Error()
 }
 
-// GetJob возвращает задание по ID.
 func (s *Scheduler) GetJob(id string) (*octocron.Job, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	rec, ok := s.jobs[id]
-	if !ok {
-		return nil, ErrJobNotFound
-	}
-	return rec.Job, nil
+	return s.store.GetJob(id)
 }
 
-// ListJobs возвращает все задания.
 func (s *Scheduler) ListJobs() []*octocron.Job {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	jobs := make([]*octocron.Job, 0, len(s.jobs))
-	for _, rec := range s.jobs {
-		jobs = append(jobs, rec.Job)
-	}
-	return jobs
+	return s.store.ListJobs()
 }
 
-// Ошибки
+// Методы для целевых хостов
+func (s *Scheduler) AddTarget(target *octocron.Target) error {
+	if s.raft.State() != raft.Leader {
+		return ErrNotLeader
+	}
+	cmd := fsm.Command{
+		Type:   fsm.CmdAddTarget,
+		Target: target,
+	}
+	data, err := json.Marshal(cmd)
+	if err != nil {
+		return err
+	}
+	f := s.raft.Apply(data, 10*time.Second)
+	return f.Error()
+}
+
+func (s *Scheduler) RemoveTarget(id string) error {
+	if s.raft.State() != raft.Leader {
+		return ErrNotLeader
+	}
+	cmd := fsm.Command{
+		Type:   fsm.CmdRemoveTarget,
+		Target: &octocron.Target{Id: id},
+	}
+	data, err := json.Marshal(cmd)
+	if err != nil {
+		return err
+	}
+	f := s.raft.Apply(data, 10*time.Second)
+	return f.Error()
+}
+
+func (s *Scheduler) GetTarget(id string) (*octocron.Target, error) {
+	return s.store.GetTarget(id)
+}
+
+func (s *Scheduler) ListTargets() []*octocron.Target {
+	return s.store.ListTargets()
+}
+
+func (s *Scheduler) GetJobHistory(jobID string, limit int) []*octocron.JobExecution {
+	return s.store.GetJobHistory(jobID, limit)
+}
+
 var (
+	ErrNotLeader   = &SchedulerError{"not leader"}
 	ErrJobExists   = &SchedulerError{"job already exists"}
 	ErrJobNotFound = &SchedulerError{"job not found"}
 )

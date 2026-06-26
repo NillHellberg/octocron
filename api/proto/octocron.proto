@@ -13,6 +13,41 @@ service Octocron {
   rpc ListJobs(ListJobsRequest) returns (ListJobsResponse);
   rpc DeleteJob(DeleteJobRequest) returns (google.protobuf.Empty);
   rpc GetJobHistory(GetJobHistoryRequest) returns (ListJobHistoryResponse);
+
+  // Новые методы для целевых хостов
+  rpc AddTarget(AddTargetRequest) returns (Target);
+  rpc RemoveTarget(RemoveTargetRequest) returns (google.protobuf.Empty);
+  rpc ListTargets(ListTargetsRequest) returns (ListTargetsResponse);
+
+  // Присоединение нового узла кластера (уже было)
+  rpc Join(JoinRequest) returns (google.protobuf.Empty);
+}
+
+message Target {
+  string id = 1;
+  string name = 2;
+  string address = 3;   // IP или хост
+  int32 port = 4;        // SSH порт, по умолчанию 22
+  string user = 5;
+  string key_path = 6;   // путь к приватному ключу на нодах octocron
+}
+
+message AddTargetRequest {
+  string name = 1;
+  string address = 2;
+  int32 port = 3;
+  string user = 4;
+  string key_path = 5;
+}
+
+message RemoveTargetRequest {
+  string id = 1;
+}
+
+message ListTargetsRequest {}
+
+message ListTargetsResponse {
+  repeated Target targets = 1;
 }
 
 message Job {
@@ -20,9 +55,10 @@ message Job {
   string name = 2;
   string cron_expression = 3;
   string command = 4;
-  repeated string targets = 5;
+  repeated string targets = 5;  // список ID целевых хостов
   bool enabled = 6;
   google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp last_run = 8;
 }
 
 message CreateJobRequest {
@@ -48,11 +84,12 @@ message DeleteJobRequest {
 
 message JobExecution {
   string job_id = 1;
-  google.protobuf.Timestamp start_time = 2;
-  google.protobuf.Timestamp end_time = 3;
-  int32 exit_code = 4;
-  string output = 5;
-  string error = 6;
+  string target_id = 2;
+  google.protobuf.Timestamp start_time = 3;
+  google.protobuf.Timestamp end_time = 4;
+  int32 exit_code = 5;
+  string output = 6;
+  string error = 7;
 }
 
 message GetJobHistoryRequest {
@@ -62,4 +99,9 @@ message GetJobHistoryRequest {
 
 message ListJobHistoryResponse {
   repeated JobExecution history = 1;
+}
+
+message JoinRequest {
+  string node_id = 1;
+  string raft_address = 2;
 }

@@ -23,22 +23,307 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type Target struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Address       string                 `protobuf:"bytes,3,opt,name=address,proto3" json:"address,omitempty"` // IP или хост
+	Port          int32                  `protobuf:"varint,4,opt,name=port,proto3" json:"port,omitempty"`      // SSH порт, по умолчанию 22
+	User          string                 `protobuf:"bytes,5,opt,name=user,proto3" json:"user,omitempty"`
+	KeyPath       string                 `protobuf:"bytes,6,opt,name=key_path,json=keyPath,proto3" json:"key_path,omitempty"` // путь к приватному ключу на нодах octocron
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Target) Reset() {
+	*x = Target{}
+	mi := &file_api_proto_octocron_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Target) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Target) ProtoMessage() {}
+
+func (x *Target) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_octocron_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Target.ProtoReflect.Descriptor instead.
+func (*Target) Descriptor() ([]byte, []int) {
+	return file_api_proto_octocron_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *Target) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Target) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Target) GetAddress() string {
+	if x != nil {
+		return x.Address
+	}
+	return ""
+}
+
+func (x *Target) GetPort() int32 {
+	if x != nil {
+		return x.Port
+	}
+	return 0
+}
+
+func (x *Target) GetUser() string {
+	if x != nil {
+		return x.User
+	}
+	return ""
+}
+
+func (x *Target) GetKeyPath() string {
+	if x != nil {
+		return x.KeyPath
+	}
+	return ""
+}
+
+type AddTargetRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Address       string                 `protobuf:"bytes,2,opt,name=address,proto3" json:"address,omitempty"`
+	Port          int32                  `protobuf:"varint,3,opt,name=port,proto3" json:"port,omitempty"`
+	User          string                 `protobuf:"bytes,4,opt,name=user,proto3" json:"user,omitempty"`
+	KeyPath       string                 `protobuf:"bytes,5,opt,name=key_path,json=keyPath,proto3" json:"key_path,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AddTargetRequest) Reset() {
+	*x = AddTargetRequest{}
+	mi := &file_api_proto_octocron_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddTargetRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddTargetRequest) ProtoMessage() {}
+
+func (x *AddTargetRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_octocron_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddTargetRequest.ProtoReflect.Descriptor instead.
+func (*AddTargetRequest) Descriptor() ([]byte, []int) {
+	return file_api_proto_octocron_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *AddTargetRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AddTargetRequest) GetAddress() string {
+	if x != nil {
+		return x.Address
+	}
+	return ""
+}
+
+func (x *AddTargetRequest) GetPort() int32 {
+	if x != nil {
+		return x.Port
+	}
+	return 0
+}
+
+func (x *AddTargetRequest) GetUser() string {
+	if x != nil {
+		return x.User
+	}
+	return ""
+}
+
+func (x *AddTargetRequest) GetKeyPath() string {
+	if x != nil {
+		return x.KeyPath
+	}
+	return ""
+}
+
+type RemoveTargetRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemoveTargetRequest) Reset() {
+	*x = RemoveTargetRequest{}
+	mi := &file_api_proto_octocron_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemoveTargetRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveTargetRequest) ProtoMessage() {}
+
+func (x *RemoveTargetRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_octocron_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoveTargetRequest.ProtoReflect.Descriptor instead.
+func (*RemoveTargetRequest) Descriptor() ([]byte, []int) {
+	return file_api_proto_octocron_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *RemoveTargetRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type ListTargetsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListTargetsRequest) Reset() {
+	*x = ListTargetsRequest{}
+	mi := &file_api_proto_octocron_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListTargetsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListTargetsRequest) ProtoMessage() {}
+
+func (x *ListTargetsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_octocron_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListTargetsRequest.ProtoReflect.Descriptor instead.
+func (*ListTargetsRequest) Descriptor() ([]byte, []int) {
+	return file_api_proto_octocron_proto_rawDescGZIP(), []int{3}
+}
+
+type ListTargetsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Targets       []*Target              `protobuf:"bytes,1,rep,name=targets,proto3" json:"targets,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListTargetsResponse) Reset() {
+	*x = ListTargetsResponse{}
+	mi := &file_api_proto_octocron_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListTargetsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListTargetsResponse) ProtoMessage() {}
+
+func (x *ListTargetsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_octocron_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListTargetsResponse.ProtoReflect.Descriptor instead.
+func (*ListTargetsResponse) Descriptor() ([]byte, []int) {
+	return file_api_proto_octocron_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ListTargetsResponse) GetTargets() []*Target {
+	if x != nil {
+		return x.Targets
+	}
+	return nil
+}
+
 type Job struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	Id             string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Name           string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	CronExpression string                 `protobuf:"bytes,3,opt,name=cron_expression,json=cronExpression,proto3" json:"cron_expression,omitempty"`
 	Command        string                 `protobuf:"bytes,4,opt,name=command,proto3" json:"command,omitempty"`
-	Targets        []string               `protobuf:"bytes,5,rep,name=targets,proto3" json:"targets,omitempty"`
+	Targets        []string               `protobuf:"bytes,5,rep,name=targets,proto3" json:"targets,omitempty"` // список ID целевых хостов
 	Enabled        bool                   `protobuf:"varint,6,opt,name=enabled,proto3" json:"enabled,omitempty"`
 	CreatedAt      *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	LastRun        *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=last_run,json=lastRun,proto3" json:"last_run,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
 
 func (x *Job) Reset() {
 	*x = Job{}
-	mi := &file_api_proto_octocron_proto_msgTypes[0]
+	mi := &file_api_proto_octocron_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -50,7 +335,7 @@ func (x *Job) String() string {
 func (*Job) ProtoMessage() {}
 
 func (x *Job) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_octocron_proto_msgTypes[0]
+	mi := &file_api_proto_octocron_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -63,7 +348,7 @@ func (x *Job) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Job.ProtoReflect.Descriptor instead.
 func (*Job) Descriptor() ([]byte, []int) {
-	return file_api_proto_octocron_proto_rawDescGZIP(), []int{0}
+	return file_api_proto_octocron_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *Job) GetId() string {
@@ -115,6 +400,13 @@ func (x *Job) GetCreatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *Job) GetLastRun() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastRun
+	}
+	return nil
+}
+
 type CreateJobRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	Name           string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
@@ -127,7 +419,7 @@ type CreateJobRequest struct {
 
 func (x *CreateJobRequest) Reset() {
 	*x = CreateJobRequest{}
-	mi := &file_api_proto_octocron_proto_msgTypes[1]
+	mi := &file_api_proto_octocron_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -139,7 +431,7 @@ func (x *CreateJobRequest) String() string {
 func (*CreateJobRequest) ProtoMessage() {}
 
 func (x *CreateJobRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_octocron_proto_msgTypes[1]
+	mi := &file_api_proto_octocron_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -152,7 +444,7 @@ func (x *CreateJobRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateJobRequest.ProtoReflect.Descriptor instead.
 func (*CreateJobRequest) Descriptor() ([]byte, []int) {
-	return file_api_proto_octocron_proto_rawDescGZIP(), []int{1}
+	return file_api_proto_octocron_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *CreateJobRequest) GetName() string {
@@ -192,7 +484,7 @@ type GetJobRequest struct {
 
 func (x *GetJobRequest) Reset() {
 	*x = GetJobRequest{}
-	mi := &file_api_proto_octocron_proto_msgTypes[2]
+	mi := &file_api_proto_octocron_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -204,7 +496,7 @@ func (x *GetJobRequest) String() string {
 func (*GetJobRequest) ProtoMessage() {}
 
 func (x *GetJobRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_octocron_proto_msgTypes[2]
+	mi := &file_api_proto_octocron_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -217,7 +509,7 @@ func (x *GetJobRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetJobRequest.ProtoReflect.Descriptor instead.
 func (*GetJobRequest) Descriptor() ([]byte, []int) {
-	return file_api_proto_octocron_proto_rawDescGZIP(), []int{2}
+	return file_api_proto_octocron_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GetJobRequest) GetId() string {
@@ -235,7 +527,7 @@ type ListJobsRequest struct {
 
 func (x *ListJobsRequest) Reset() {
 	*x = ListJobsRequest{}
-	mi := &file_api_proto_octocron_proto_msgTypes[3]
+	mi := &file_api_proto_octocron_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -247,7 +539,7 @@ func (x *ListJobsRequest) String() string {
 func (*ListJobsRequest) ProtoMessage() {}
 
 func (x *ListJobsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_octocron_proto_msgTypes[3]
+	mi := &file_api_proto_octocron_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -260,7 +552,7 @@ func (x *ListJobsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListJobsRequest.ProtoReflect.Descriptor instead.
 func (*ListJobsRequest) Descriptor() ([]byte, []int) {
-	return file_api_proto_octocron_proto_rawDescGZIP(), []int{3}
+	return file_api_proto_octocron_proto_rawDescGZIP(), []int{8}
 }
 
 type ListJobsResponse struct {
@@ -272,7 +564,7 @@ type ListJobsResponse struct {
 
 func (x *ListJobsResponse) Reset() {
 	*x = ListJobsResponse{}
-	mi := &file_api_proto_octocron_proto_msgTypes[4]
+	mi := &file_api_proto_octocron_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -284,7 +576,7 @@ func (x *ListJobsResponse) String() string {
 func (*ListJobsResponse) ProtoMessage() {}
 
 func (x *ListJobsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_octocron_proto_msgTypes[4]
+	mi := &file_api_proto_octocron_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -297,7 +589,7 @@ func (x *ListJobsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListJobsResponse.ProtoReflect.Descriptor instead.
 func (*ListJobsResponse) Descriptor() ([]byte, []int) {
-	return file_api_proto_octocron_proto_rawDescGZIP(), []int{4}
+	return file_api_proto_octocron_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ListJobsResponse) GetJobs() []*Job {
@@ -316,7 +608,7 @@ type DeleteJobRequest struct {
 
 func (x *DeleteJobRequest) Reset() {
 	*x = DeleteJobRequest{}
-	mi := &file_api_proto_octocron_proto_msgTypes[5]
+	mi := &file_api_proto_octocron_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -328,7 +620,7 @@ func (x *DeleteJobRequest) String() string {
 func (*DeleteJobRequest) ProtoMessage() {}
 
 func (x *DeleteJobRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_octocron_proto_msgTypes[5]
+	mi := &file_api_proto_octocron_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -341,7 +633,7 @@ func (x *DeleteJobRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteJobRequest.ProtoReflect.Descriptor instead.
 func (*DeleteJobRequest) Descriptor() ([]byte, []int) {
-	return file_api_proto_octocron_proto_rawDescGZIP(), []int{5}
+	return file_api_proto_octocron_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *DeleteJobRequest) GetId() string {
@@ -354,18 +646,19 @@ func (x *DeleteJobRequest) GetId() string {
 type JobExecution struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	JobId         string                 `protobuf:"bytes,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
-	StartTime     *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
-	EndTime       *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=end_time,json=endTime,proto3" json:"end_time,omitempty"`
-	ExitCode      int32                  `protobuf:"varint,4,opt,name=exit_code,json=exitCode,proto3" json:"exit_code,omitempty"`
-	Output        string                 `protobuf:"bytes,5,opt,name=output,proto3" json:"output,omitempty"`
-	Error         string                 `protobuf:"bytes,6,opt,name=error,proto3" json:"error,omitempty"`
+	TargetId      string                 `protobuf:"bytes,2,opt,name=target_id,json=targetId,proto3" json:"target_id,omitempty"`
+	StartTime     *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
+	EndTime       *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=end_time,json=endTime,proto3" json:"end_time,omitempty"`
+	ExitCode      int32                  `protobuf:"varint,5,opt,name=exit_code,json=exitCode,proto3" json:"exit_code,omitempty"`
+	Output        string                 `protobuf:"bytes,6,opt,name=output,proto3" json:"output,omitempty"`
+	Error         string                 `protobuf:"bytes,7,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *JobExecution) Reset() {
 	*x = JobExecution{}
-	mi := &file_api_proto_octocron_proto_msgTypes[6]
+	mi := &file_api_proto_octocron_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -377,7 +670,7 @@ func (x *JobExecution) String() string {
 func (*JobExecution) ProtoMessage() {}
 
 func (x *JobExecution) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_octocron_proto_msgTypes[6]
+	mi := &file_api_proto_octocron_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -390,12 +683,19 @@ func (x *JobExecution) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use JobExecution.ProtoReflect.Descriptor instead.
 func (*JobExecution) Descriptor() ([]byte, []int) {
-	return file_api_proto_octocron_proto_rawDescGZIP(), []int{6}
+	return file_api_proto_octocron_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *JobExecution) GetJobId() string {
 	if x != nil {
 		return x.JobId
+	}
+	return ""
+}
+
+func (x *JobExecution) GetTargetId() string {
+	if x != nil {
+		return x.TargetId
 	}
 	return ""
 }
@@ -445,7 +745,7 @@ type GetJobHistoryRequest struct {
 
 func (x *GetJobHistoryRequest) Reset() {
 	*x = GetJobHistoryRequest{}
-	mi := &file_api_proto_octocron_proto_msgTypes[7]
+	mi := &file_api_proto_octocron_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -457,7 +757,7 @@ func (x *GetJobHistoryRequest) String() string {
 func (*GetJobHistoryRequest) ProtoMessage() {}
 
 func (x *GetJobHistoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_octocron_proto_msgTypes[7]
+	mi := &file_api_proto_octocron_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -470,7 +770,7 @@ func (x *GetJobHistoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetJobHistoryRequest.ProtoReflect.Descriptor instead.
 func (*GetJobHistoryRequest) Descriptor() ([]byte, []int) {
-	return file_api_proto_octocron_proto_rawDescGZIP(), []int{7}
+	return file_api_proto_octocron_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *GetJobHistoryRequest) GetJobId() string {
@@ -496,7 +796,7 @@ type ListJobHistoryResponse struct {
 
 func (x *ListJobHistoryResponse) Reset() {
 	*x = ListJobHistoryResponse{}
-	mi := &file_api_proto_octocron_proto_msgTypes[8]
+	mi := &file_api_proto_octocron_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -508,7 +808,7 @@ func (x *ListJobHistoryResponse) String() string {
 func (*ListJobHistoryResponse) ProtoMessage() {}
 
 func (x *ListJobHistoryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_proto_octocron_proto_msgTypes[8]
+	mi := &file_api_proto_octocron_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -521,7 +821,7 @@ func (x *ListJobHistoryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListJobHistoryResponse.ProtoReflect.Descriptor instead.
 func (*ListJobHistoryResponse) Descriptor() ([]byte, []int) {
-	return file_api_proto_octocron_proto_rawDescGZIP(), []int{8}
+	return file_api_proto_octocron_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ListJobHistoryResponse) GetHistory() []*JobExecution {
@@ -531,11 +831,81 @@ func (x *ListJobHistoryResponse) GetHistory() []*JobExecution {
 	return nil
 }
 
+type JoinRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	NodeId        string                 `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
+	RaftAddress   string                 `protobuf:"bytes,2,opt,name=raft_address,json=raftAddress,proto3" json:"raft_address,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *JoinRequest) Reset() {
+	*x = JoinRequest{}
+	mi := &file_api_proto_octocron_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *JoinRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*JoinRequest) ProtoMessage() {}
+
+func (x *JoinRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_proto_octocron_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use JoinRequest.ProtoReflect.Descriptor instead.
+func (*JoinRequest) Descriptor() ([]byte, []int) {
+	return file_api_proto_octocron_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *JoinRequest) GetNodeId() string {
+	if x != nil {
+		return x.NodeId
+	}
+	return ""
+}
+
+func (x *JoinRequest) GetRaftAddress() string {
+	if x != nil {
+		return x.RaftAddress
+	}
+	return ""
+}
+
 var File_api_proto_octocron_proto protoreflect.FileDescriptor
 
 const file_api_proto_octocron_proto_rawDesc = "" +
 	"\n" +
-	"\x18api/proto/octocron.proto\x12\boctocron\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xdb\x01\n" +
+	"\x18api/proto/octocron.proto\x12\boctocron\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x89\x01\n" +
+	"\x06Target\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x18\n" +
+	"\aaddress\x18\x03 \x01(\tR\aaddress\x12\x12\n" +
+	"\x04port\x18\x04 \x01(\x05R\x04port\x12\x12\n" +
+	"\x04user\x18\x05 \x01(\tR\x04user\x12\x19\n" +
+	"\bkey_path\x18\x06 \x01(\tR\akeyPath\"\x83\x01\n" +
+	"\x10AddTargetRequest\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
+	"\aaddress\x18\x02 \x01(\tR\aaddress\x12\x12\n" +
+	"\x04port\x18\x03 \x01(\x05R\x04port\x12\x12\n" +
+	"\x04user\x18\x04 \x01(\tR\x04user\x12\x19\n" +
+	"\bkey_path\x18\x05 \x01(\tR\akeyPath\"%\n" +
+	"\x13RemoveTargetRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\x14\n" +
+	"\x12ListTargetsRequest\"A\n" +
+	"\x13ListTargetsResponse\x12*\n" +
+	"\atargets\x18\x01 \x03(\v2\x10.octocron.TargetR\atargets\"\x92\x02\n" +
 	"\x03Job\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12'\n" +
@@ -544,7 +914,8 @@ const file_api_proto_octocron_proto_rawDesc = "" +
 	"\atargets\x18\x05 \x03(\tR\atargets\x12\x18\n" +
 	"\aenabled\x18\x06 \x01(\bR\aenabled\x129\n" +
 	"\n" +
-	"created_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\x83\x01\n" +
+	"created_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x125\n" +
+	"\blast_run\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\alastRun\"\x83\x01\n" +
 	"\x10CreateJobRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12'\n" +
 	"\x0fcron_expression\x18\x02 \x01(\tR\x0ecronExpression\x12\x18\n" +
@@ -556,26 +927,34 @@ const file_api_proto_octocron_proto_rawDesc = "" +
 	"\x10ListJobsResponse\x12!\n" +
 	"\x04jobs\x18\x01 \x03(\v2\r.octocron.JobR\x04jobs\"\"\n" +
 	"\x10DeleteJobRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\xe2\x01\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\xff\x01\n" +
 	"\fJobExecution\x12\x15\n" +
-	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x129\n" +
+	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x12\x1b\n" +
+	"\ttarget_id\x18\x02 \x01(\tR\btargetId\x129\n" +
 	"\n" +
-	"start_time\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\tstartTime\x125\n" +
-	"\bend_time\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\aendTime\x12\x1b\n" +
-	"\texit_code\x18\x04 \x01(\x05R\bexitCode\x12\x16\n" +
-	"\x06output\x18\x05 \x01(\tR\x06output\x12\x14\n" +
-	"\x05error\x18\x06 \x01(\tR\x05error\"C\n" +
+	"start_time\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\tstartTime\x125\n" +
+	"\bend_time\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\aendTime\x12\x1b\n" +
+	"\texit_code\x18\x05 \x01(\x05R\bexitCode\x12\x16\n" +
+	"\x06output\x18\x06 \x01(\tR\x06output\x12\x14\n" +
+	"\x05error\x18\a \x01(\tR\x05error\"C\n" +
 	"\x14GetJobHistoryRequest\x12\x15\n" +
 	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\"J\n" +
 	"\x16ListJobHistoryResponse\x120\n" +
-	"\ahistory\x18\x01 \x03(\v2\x16.octocron.JobExecutionR\ahistory2\xcb\x02\n" +
+	"\ahistory\x18\x01 \x03(\v2\x16.octocron.JobExecutionR\ahistory\"I\n" +
+	"\vJoinRequest\x12\x17\n" +
+	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12!\n" +
+	"\fraft_address\x18\x02 \x01(\tR\vraftAddress2\xd0\x04\n" +
 	"\bOctocron\x126\n" +
 	"\tCreateJob\x12\x1a.octocron.CreateJobRequest\x1a\r.octocron.Job\x120\n" +
 	"\x06GetJob\x12\x17.octocron.GetJobRequest\x1a\r.octocron.Job\x12A\n" +
 	"\bListJobs\x12\x19.octocron.ListJobsRequest\x1a\x1a.octocron.ListJobsResponse\x12?\n" +
 	"\tDeleteJob\x12\x1a.octocron.DeleteJobRequest\x1a\x16.google.protobuf.Empty\x12Q\n" +
-	"\rGetJobHistory\x12\x1e.octocron.GetJobHistoryRequest\x1a .octocron.ListJobHistoryResponseB3Z1github.com/NillHellberg/octocron/api/gen/octocronb\x06proto3"
+	"\rGetJobHistory\x12\x1e.octocron.GetJobHistoryRequest\x1a .octocron.ListJobHistoryResponse\x129\n" +
+	"\tAddTarget\x12\x1a.octocron.AddTargetRequest\x1a\x10.octocron.Target\x12E\n" +
+	"\fRemoveTarget\x12\x1d.octocron.RemoveTargetRequest\x1a\x16.google.protobuf.Empty\x12J\n" +
+	"\vListTargets\x12\x1c.octocron.ListTargetsRequest\x1a\x1d.octocron.ListTargetsResponse\x125\n" +
+	"\x04Join\x12\x15.octocron.JoinRequest\x1a\x16.google.protobuf.EmptyB3Z1github.com/NillHellberg/octocron/api/gen/octocronb\x06proto3"
 
 var (
 	file_api_proto_octocron_proto_rawDescOnce sync.Once
@@ -589,41 +968,57 @@ func file_api_proto_octocron_proto_rawDescGZIP() []byte {
 	return file_api_proto_octocron_proto_rawDescData
 }
 
-var file_api_proto_octocron_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_api_proto_octocron_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_api_proto_octocron_proto_goTypes = []any{
-	(*Job)(nil),                    // 0: octocron.Job
-	(*CreateJobRequest)(nil),       // 1: octocron.CreateJobRequest
-	(*GetJobRequest)(nil),          // 2: octocron.GetJobRequest
-	(*ListJobsRequest)(nil),        // 3: octocron.ListJobsRequest
-	(*ListJobsResponse)(nil),       // 4: octocron.ListJobsResponse
-	(*DeleteJobRequest)(nil),       // 5: octocron.DeleteJobRequest
-	(*JobExecution)(nil),           // 6: octocron.JobExecution
-	(*GetJobHistoryRequest)(nil),   // 7: octocron.GetJobHistoryRequest
-	(*ListJobHistoryResponse)(nil), // 8: octocron.ListJobHistoryResponse
-	(*timestamppb.Timestamp)(nil),  // 9: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),          // 10: google.protobuf.Empty
+	(*Target)(nil),                 // 0: octocron.Target
+	(*AddTargetRequest)(nil),       // 1: octocron.AddTargetRequest
+	(*RemoveTargetRequest)(nil),    // 2: octocron.RemoveTargetRequest
+	(*ListTargetsRequest)(nil),     // 3: octocron.ListTargetsRequest
+	(*ListTargetsResponse)(nil),    // 4: octocron.ListTargetsResponse
+	(*Job)(nil),                    // 5: octocron.Job
+	(*CreateJobRequest)(nil),       // 6: octocron.CreateJobRequest
+	(*GetJobRequest)(nil),          // 7: octocron.GetJobRequest
+	(*ListJobsRequest)(nil),        // 8: octocron.ListJobsRequest
+	(*ListJobsResponse)(nil),       // 9: octocron.ListJobsResponse
+	(*DeleteJobRequest)(nil),       // 10: octocron.DeleteJobRequest
+	(*JobExecution)(nil),           // 11: octocron.JobExecution
+	(*GetJobHistoryRequest)(nil),   // 12: octocron.GetJobHistoryRequest
+	(*ListJobHistoryResponse)(nil), // 13: octocron.ListJobHistoryResponse
+	(*JoinRequest)(nil),            // 14: octocron.JoinRequest
+	(*timestamppb.Timestamp)(nil),  // 15: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),          // 16: google.protobuf.Empty
 }
 var file_api_proto_octocron_proto_depIdxs = []int32{
-	9,  // 0: octocron.Job.created_at:type_name -> google.protobuf.Timestamp
-	0,  // 1: octocron.ListJobsResponse.jobs:type_name -> octocron.Job
-	9,  // 2: octocron.JobExecution.start_time:type_name -> google.protobuf.Timestamp
-	9,  // 3: octocron.JobExecution.end_time:type_name -> google.protobuf.Timestamp
-	6,  // 4: octocron.ListJobHistoryResponse.history:type_name -> octocron.JobExecution
-	1,  // 5: octocron.Octocron.CreateJob:input_type -> octocron.CreateJobRequest
-	2,  // 6: octocron.Octocron.GetJob:input_type -> octocron.GetJobRequest
-	3,  // 7: octocron.Octocron.ListJobs:input_type -> octocron.ListJobsRequest
-	5,  // 8: octocron.Octocron.DeleteJob:input_type -> octocron.DeleteJobRequest
-	7,  // 9: octocron.Octocron.GetJobHistory:input_type -> octocron.GetJobHistoryRequest
-	0,  // 10: octocron.Octocron.CreateJob:output_type -> octocron.Job
-	0,  // 11: octocron.Octocron.GetJob:output_type -> octocron.Job
-	4,  // 12: octocron.Octocron.ListJobs:output_type -> octocron.ListJobsResponse
-	10, // 13: octocron.Octocron.DeleteJob:output_type -> google.protobuf.Empty
-	8,  // 14: octocron.Octocron.GetJobHistory:output_type -> octocron.ListJobHistoryResponse
-	10, // [10:15] is the sub-list for method output_type
-	5,  // [5:10] is the sub-list for method input_type
-	5,  // [5:5] is the sub-list for extension type_name
-	5,  // [5:5] is the sub-list for extension extendee
-	0,  // [0:5] is the sub-list for field type_name
+	0,  // 0: octocron.ListTargetsResponse.targets:type_name -> octocron.Target
+	15, // 1: octocron.Job.created_at:type_name -> google.protobuf.Timestamp
+	15, // 2: octocron.Job.last_run:type_name -> google.protobuf.Timestamp
+	5,  // 3: octocron.ListJobsResponse.jobs:type_name -> octocron.Job
+	15, // 4: octocron.JobExecution.start_time:type_name -> google.protobuf.Timestamp
+	15, // 5: octocron.JobExecution.end_time:type_name -> google.protobuf.Timestamp
+	11, // 6: octocron.ListJobHistoryResponse.history:type_name -> octocron.JobExecution
+	6,  // 7: octocron.Octocron.CreateJob:input_type -> octocron.CreateJobRequest
+	7,  // 8: octocron.Octocron.GetJob:input_type -> octocron.GetJobRequest
+	8,  // 9: octocron.Octocron.ListJobs:input_type -> octocron.ListJobsRequest
+	10, // 10: octocron.Octocron.DeleteJob:input_type -> octocron.DeleteJobRequest
+	12, // 11: octocron.Octocron.GetJobHistory:input_type -> octocron.GetJobHistoryRequest
+	1,  // 12: octocron.Octocron.AddTarget:input_type -> octocron.AddTargetRequest
+	2,  // 13: octocron.Octocron.RemoveTarget:input_type -> octocron.RemoveTargetRequest
+	3,  // 14: octocron.Octocron.ListTargets:input_type -> octocron.ListTargetsRequest
+	14, // 15: octocron.Octocron.Join:input_type -> octocron.JoinRequest
+	5,  // 16: octocron.Octocron.CreateJob:output_type -> octocron.Job
+	5,  // 17: octocron.Octocron.GetJob:output_type -> octocron.Job
+	9,  // 18: octocron.Octocron.ListJobs:output_type -> octocron.ListJobsResponse
+	16, // 19: octocron.Octocron.DeleteJob:output_type -> google.protobuf.Empty
+	13, // 20: octocron.Octocron.GetJobHistory:output_type -> octocron.ListJobHistoryResponse
+	0,  // 21: octocron.Octocron.AddTarget:output_type -> octocron.Target
+	16, // 22: octocron.Octocron.RemoveTarget:output_type -> google.protobuf.Empty
+	4,  // 23: octocron.Octocron.ListTargets:output_type -> octocron.ListTargetsResponse
+	16, // 24: octocron.Octocron.Join:output_type -> google.protobuf.Empty
+	16, // [16:25] is the sub-list for method output_type
+	7,  // [7:16] is the sub-list for method input_type
+	7,  // [7:7] is the sub-list for extension type_name
+	7,  // [7:7] is the sub-list for extension extendee
+	0,  // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_api_proto_octocron_proto_init() }
@@ -637,7 +1032,7 @@ func file_api_proto_octocron_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_proto_octocron_proto_rawDesc), len(file_api_proto_octocron_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

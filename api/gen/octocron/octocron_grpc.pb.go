@@ -25,6 +25,10 @@ const (
 	Octocron_ListJobs_FullMethodName      = "/octocron.Octocron/ListJobs"
 	Octocron_DeleteJob_FullMethodName     = "/octocron.Octocron/DeleteJob"
 	Octocron_GetJobHistory_FullMethodName = "/octocron.Octocron/GetJobHistory"
+	Octocron_AddTarget_FullMethodName     = "/octocron.Octocron/AddTarget"
+	Octocron_RemoveTarget_FullMethodName  = "/octocron.Octocron/RemoveTarget"
+	Octocron_ListTargets_FullMethodName   = "/octocron.Octocron/ListTargets"
+	Octocron_Join_FullMethodName          = "/octocron.Octocron/Join"
 )
 
 // OctocronClient is the client API for Octocron service.
@@ -36,6 +40,12 @@ type OctocronClient interface {
 	ListJobs(ctx context.Context, in *ListJobsRequest, opts ...grpc.CallOption) (*ListJobsResponse, error)
 	DeleteJob(ctx context.Context, in *DeleteJobRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	GetJobHistory(ctx context.Context, in *GetJobHistoryRequest, opts ...grpc.CallOption) (*ListJobHistoryResponse, error)
+	// Новые методы для целевых хостов
+	AddTarget(ctx context.Context, in *AddTargetRequest, opts ...grpc.CallOption) (*Target, error)
+	RemoveTarget(ctx context.Context, in *RemoveTargetRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	ListTargets(ctx context.Context, in *ListTargetsRequest, opts ...grpc.CallOption) (*ListTargetsResponse, error)
+	// Присоединение нового узла кластера (уже было)
+	Join(ctx context.Context, in *JoinRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type octocronClient struct {
@@ -96,6 +106,46 @@ func (c *octocronClient) GetJobHistory(ctx context.Context, in *GetJobHistoryReq
 	return out, nil
 }
 
+func (c *octocronClient) AddTarget(ctx context.Context, in *AddTargetRequest, opts ...grpc.CallOption) (*Target, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Target)
+	err := c.cc.Invoke(ctx, Octocron_AddTarget_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *octocronClient) RemoveTarget(ctx context.Context, in *RemoveTargetRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Octocron_RemoveTarget_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *octocronClient) ListTargets(ctx context.Context, in *ListTargetsRequest, opts ...grpc.CallOption) (*ListTargetsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListTargetsResponse)
+	err := c.cc.Invoke(ctx, Octocron_ListTargets_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *octocronClient) Join(ctx context.Context, in *JoinRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Octocron_Join_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // OctocronServer is the server API for Octocron service.
 // All implementations must embed UnimplementedOctocronServer
 // for forward compatibility.
@@ -105,6 +155,12 @@ type OctocronServer interface {
 	ListJobs(context.Context, *ListJobsRequest) (*ListJobsResponse, error)
 	DeleteJob(context.Context, *DeleteJobRequest) (*emptypb.Empty, error)
 	GetJobHistory(context.Context, *GetJobHistoryRequest) (*ListJobHistoryResponse, error)
+	// Новые методы для целевых хостов
+	AddTarget(context.Context, *AddTargetRequest) (*Target, error)
+	RemoveTarget(context.Context, *RemoveTargetRequest) (*emptypb.Empty, error)
+	ListTargets(context.Context, *ListTargetsRequest) (*ListTargetsResponse, error)
+	// Присоединение нового узла кластера (уже было)
+	Join(context.Context, *JoinRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedOctocronServer()
 }
 
@@ -129,6 +185,18 @@ func (UnimplementedOctocronServer) DeleteJob(context.Context, *DeleteJobRequest)
 }
 func (UnimplementedOctocronServer) GetJobHistory(context.Context, *GetJobHistoryRequest) (*ListJobHistoryResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetJobHistory not implemented")
+}
+func (UnimplementedOctocronServer) AddTarget(context.Context, *AddTargetRequest) (*Target, error) {
+	return nil, status.Error(codes.Unimplemented, "method AddTarget not implemented")
+}
+func (UnimplementedOctocronServer) RemoveTarget(context.Context, *RemoveTargetRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method RemoveTarget not implemented")
+}
+func (UnimplementedOctocronServer) ListTargets(context.Context, *ListTargetsRequest) (*ListTargetsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListTargets not implemented")
+}
+func (UnimplementedOctocronServer) Join(context.Context, *JoinRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method Join not implemented")
 }
 func (UnimplementedOctocronServer) mustEmbedUnimplementedOctocronServer() {}
 func (UnimplementedOctocronServer) testEmbeddedByValue()                  {}
@@ -241,6 +309,78 @@ func _Octocron_GetJobHistory_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Octocron_AddTarget_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddTargetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OctocronServer).AddTarget(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Octocron_AddTarget_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OctocronServer).AddTarget(ctx, req.(*AddTargetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Octocron_RemoveTarget_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveTargetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OctocronServer).RemoveTarget(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Octocron_RemoveTarget_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OctocronServer).RemoveTarget(ctx, req.(*RemoveTargetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Octocron_ListTargets_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListTargetsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OctocronServer).ListTargets(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Octocron_ListTargets_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OctocronServer).ListTargets(ctx, req.(*ListTargetsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Octocron_Join_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(JoinRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OctocronServer).Join(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Octocron_Join_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OctocronServer).Join(ctx, req.(*JoinRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Octocron_ServiceDesc is the grpc.ServiceDesc for Octocron service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -267,6 +407,22 @@ var Octocron_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetJobHistory",
 			Handler:    _Octocron_GetJobHistory_Handler,
+		},
+		{
+			MethodName: "AddTarget",
+			Handler:    _Octocron_AddTarget_Handler,
+		},
+		{
+			MethodName: "RemoveTarget",
+			Handler:    _Octocron_RemoveTarget_Handler,
+		},
+		{
+			MethodName: "ListTargets",
+			Handler:    _Octocron_ListTargets_Handler,
+		},
+		{
+			MethodName: "Join",
+			Handler:    _Octocron_Join_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
