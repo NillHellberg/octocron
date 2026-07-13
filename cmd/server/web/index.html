@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Octocron Dashboard</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 2em; background: #f5f7fa; color: #333; }
+    h1, h2 { color: #2c3e50; }
+    .container { max-width: 1200px; margin: 0 auto; }
+    .section { background: white; padding: 1.5em; margin-bottom: 2em; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px; text-align: left; border-bottom: 1px solid #e0e0e0; }
+    th { background: #f8f9fa; }
+    button, input, select { padding: 8px 12px; margin: 4px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
+    button { background: #3498db; color: white; border: none; cursor: pointer; }
+    button.danger { background: #e74c3c; }
+    button:hover { opacity: 0.9; }
+    .form-group { margin-bottom: 10px; }
+    label { display: inline-block; width: 120px; font-weight: bold; }
+    .log { background: #f4f4f4; padding: 10px; border-radius: 4px; white-space: pre-wrap; font-family: monospace; font-size: 13px; max-height: 300px; overflow-y: auto; }
+    .error { color: #e74c3c; }
+    .hidden { display: none; }
+    select[multiple] { min-height: 80px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🐙 Octocron Dashboard</h1>
+
+    <!-- Раздел заданий -->
+    <div class="section">
+      <h2>Задания</h2>
+      <button onclick="refreshJobs()">Обновить</button>
+      <button onclick="showCreateJob()">Создать задание</button>
+      <div id="createJobForm" class="hidden">
+        <div class="form-group">
+          <label>Название:</label>
+          <input type="text" id="jobName" required>
+        </div>
+        <div class="form-group">
+          <label>Cron-выражение:</label>
+          <input type="text" id="jobCron" placeholder="*/5 * * * * *" required>
+        </div>
+        <div class="form-group">
+          <label>Команда:</label>
+          <input type="text" id="jobCommand" required>
+        </div>
+        <div class="form-group">
+          <label>Цели:</label>
+          <select id="jobTargets" multiple></select>
+          <small>Удерживайте Ctrl/Cmd для выбора нескольких</small>
+        </div>
+        <button onclick="createJob()">Сохранить</button>
+        <button onclick="hideCreateJob()">Отмена</button>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Название</th>
+            <th>Cron</th>
+            <th>Команда</th>
+            <th>Цели</th>
+            <th>Действия</th>
+          </tr>
+        </thead>
+        <tbody id="jobsTable"></tbody>
+      </table>
+    </div>
+
+    <!-- Раздел истории -->
+    <div class="section">
+      <h2>История выполнения</h2>
+      <div class="form-group">
+        <label>ID задания:</label>
+        <input type="text" id="historyJobId">
+        <button onclick="showHistory()">Показать последние 10</button>
+      </div>
+      <div id="historyLog" class="log hidden"></div>
+    </div>
+
+    <!-- Раздел целевых хостов -->
+    <div class="section">
+      <h2>Целевые хосты</h2>
+      <button onclick="refreshTargets()">Обновить</button>
+      <button onclick="showAddTarget()">Добавить хост</button>
+      <div id="addTargetForm" class="hidden">
+        <div class="form-group">
+          <label>Название:</label>
+          <input type="text" id="targetName" required>
+        </div>
+        <div class="form-group">
+          <label>Адрес:</label>
+          <input type="text" id="targetAddress" required>
+        </div>
+        <div class="form-group">
+          <label>Порт:</label>
+          <input type="number" id="targetPort" value="22" required>
+        </div>
+        <div class="form-group">
+          <label>Пользователь:</label>
+          <input type="text" id="targetUser" required>
+        </div>
+        <div class="form-group">
+          <label>Путь к ключу:</label>
+          <input type="text" id="targetKey" required>
+        </div>
+        <button onclick="addTarget()">Сохранить</button>
+        <button onclick="hideAddTarget()">Отмена</button>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Название</th>
+            <th>Адрес</th>
+            <th>Порт</th>
+            <th>Пользователь</th>
+            <th>Действия</th>
+          </tr>
+        </thead>
+        <tbody id="targetsTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const API = '/api';
+
+    async function apiFetch(url, method = 'GET', body = null) {
+      const opts = { method, headers: { 'Content-Type': 'application/json' } };
+      if (body) opts.body = JSON.stringify(body);
+      const resp = await fetch(API + url, opts);
+      if (!resp.ok) {
+        const text = await resp.text();
+        throw new Error(`HTTP ${resp.status}: ${text}`);
+      }
+      return resp.json();
+    }
+
+    // Загрузка целей в выпадающий список
+    async function populateTargetSelect() {
+      try {
+        const data = await apiFetch('/targets');
+        const select = document.getElementById('jobTargets');
+        select.innerHTML = '';
+        (data.targets || []).forEach(t => {
+          const option = document.createElement('option');
+          option.value = t.id;
+          option.text = `${t.name} (${t.id.substring(0,8)}...)`;
+          select.appendChild(option);
+        });
+      } catch(e) { /* игнорируем */ }
+    }
+
+    // Задания
+    async function refreshJobs() {
+      try {
+        const data = await apiFetch('/jobs');
+        const tbody = document.getElementById('jobsTable');
+        tbody.innerHTML = (data.jobs || []).map(job => `
+          <tr>
+            <td title="${job.id}">${job.id.substring(0,8)}...</td>
+            <td>${job.name}</td>
+            <td>${job.cronExpression || job.cron_expression || '-'}</td>
+            <td>${job.command}</td>
+            <td>${(job.targets || []).join(', ') || '-'}</td>
+            <td>
+              <button onclick="deleteJob('${job.id}')">Удалить</button>
+            </td>
+          </tr>
+        `).join('') || '<tr><td colspan="6">Нет заданий</td></tr>';
+      } catch(e) {
+        alert('Ошибка загрузки заданий: ' + e.message);
+      }
+    }
+
+    function showCreateJob() {
+      document.getElementById('createJobForm').classList.remove('hidden');
+      populateTargetSelect();
+    }
+    function hideCreateJob() {
+      document.getElementById('createJobForm').classList.add('hidden');
+    }
+
+    async function createJob() {
+      const name = document.getElementById('jobName').value.trim();
+      const cron = document.getElementById('jobCron').value.trim();
+      const command = document.getElementById('jobCommand').value.trim();
+      const select = document.getElementById('jobTargets');
+      const targets = Array.from(select.selectedOptions).map(o => o.value);
+      try {
+        await apiFetch('/jobs', 'POST', { name, cron_expression: cron, command, targets });
+        hideCreateJob();
+        await refreshJobs();
+      } catch(e) {
+        alert('Ошибка создания задания: ' + e.message);
+      }
+    }
+
+    async function deleteJob(id) {
+      if (!confirm('Удалить задание ' + id + '?')) return;
+      try {
+        await apiFetch('/jobs/' + id, 'DELETE');
+        await refreshJobs();
+      } catch(e) {
+        alert('Ошибка удаления: ' + e.message);
+      }
+    }
+
+    // История
+    async function showHistory() {
+      const jobId = document.getElementById('historyJobId').value.trim();
+      if (!jobId) return alert('Введите ID задания');
+      try {
+        const data = await apiFetch('/jobs/' + jobId + '/history?limit=10');
+        const logDiv = document.getElementById('historyLog');
+        logDiv.classList.remove('hidden');
+        logDiv.innerHTML = (data.history || []).map(e =>
+          `[${e.startTime}] код: ${e.exitCode}\n${e.output || ''}${e.error ? 'Ошибка: ' + e.error : ''}`
+        ).join('\n---\n') || 'Нет записей';
+      } catch(e) {
+        alert('Ошибка: ' + e.message);
+      }
+    }
+
+    // Цели
+    async function refreshTargets() {
+      try {
+        const data = await apiFetch('/targets');
+        const tbody = document.getElementById('targetsTable');
+        tbody.innerHTML = (data.targets || []).map(t => `
+          <tr>
+            <td title="${t.id}">${t.id.substring(0,8)}...</td>
+            <td>${t.name}</td>
+            <td>${t.address}</td>
+            <td>${t.port}</td>
+            <td>${t.user}</td>
+            <td>
+              <button onclick="deleteTarget('${t.id}')">Удалить</button>
+            </td>
+          </tr>
+        `).join('') || '<tr><td colspan="6">Нет целевых хостов</td></tr>';
+        // После обновления таблицы целей, обновим и выпадающий список, если он видим
+        if (!document.getElementById('createJobForm').classList.contains('hidden')) {
+          populateTargetSelect();
+        }
+      } catch(e) {
+        alert('Ошибка загрузки целей: ' + e.message);
+      }
+    }
+
+    function showAddTarget() {
+      document.getElementById('addTargetForm').classList.remove('hidden');
+    }
+    function hideAddTarget() {
+      document.getElementById('addTargetForm').classList.add('hidden');
+    }
+
+    async function addTarget() {
+      const name = document.getElementById('targetName').value.trim();
+      const address = document.getElementById('targetAddress').value.trim();
+      const port = parseInt(document.getElementById('targetPort').value) || 22;
+      const user = document.getElementById('targetUser').value.trim();
+      const keyPath = document.getElementById('targetKey').value.trim();
+      try {
+        await apiFetch('/targets', 'POST', { name, address, port, user, key_path: keyPath });
+        hideAddTarget();
+        await refreshTargets();
+      } catch(e) {
+        alert('Ошибка добавления хоста: ' + e.message);
+      }
+    }
+
+    async function deleteTarget(id) {
+      if (!confirm('Удалить хост ' + id + '?')) return;
+      try {
+        await apiFetch('/targets/' + id, 'DELETE');
+        await refreshTargets();
+      } catch(e) {
+        alert('Ошибка удаления: ' + e.message);
+      }
+    }
+
+    // Инициализация
+    refreshJobs();
+    refreshTargets();
+  </script>
+</body>
+</html>

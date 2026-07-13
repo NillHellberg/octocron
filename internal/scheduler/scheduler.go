@@ -119,7 +119,11 @@ func (s *Scheduler) checkAndExecute() {
 				job.Command,
 			)
 			endTime := time.Now()
-			log.Printf("Job %s on %s finished: code=%d", job.Id, target.Name, exitCode)
+			if err != nil {
+    				log.Printf("Job %s on %s ERROR: %v (stdout: %q, stderr: %q)", job.Id, target.Name, err, stdout, stderr)
+			} else {
+				log.Printf("Job %s on %s finished: code=%d", job.Id, target.Name, exitCode)
+			}
 
 			// Сохраняем результат выполнения в FSM
 			execution := &octocron.JobExecution{
