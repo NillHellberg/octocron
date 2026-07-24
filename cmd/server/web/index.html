@@ -1,132 +1,366 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Octocron Dashboard</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 2em; background: #f5f7fa; color: #333; }
-    h1, h2 { color: #2c3e50; }
-    .container { max-width: 1200px; margin: 0 auto; }
-    .section { background: white; padding: 1.5em; margin-bottom: 2em; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 10px; text-align: left; border-bottom: 1px solid #e0e0e0; }
-    th { background: #f8f9fa; }
-    button, input, select { padding: 8px 12px; margin: 4px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
-    button { background: #3498db; color: white; border: none; cursor: pointer; }
-    button.danger { background: #e74c3c; }
-    button:hover { opacity: 0.9; }
-    .form-group { margin-bottom: 10px; }
-    label { display: inline-block; width: 120px; font-weight: bold; }
-    .log { background: #f4f4f4; padding: 10px; border-radius: 4px; white-space: pre-wrap; font-family: monospace; font-size: 13px; max-height: 300px; overflow-y: auto; }
-    .error { color: #e74c3c; }
+    :root { --pico-font-size: 14px; }
     .hidden { display: none; }
-    select[multiple] { min-height: 80px; }
+    table { table-layout: fixed; width: 100%; }
+    th, td {
+      vertical-align: middle;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    th {
+      position: relative;
+      user-select: none;
+    }
+    th .resize-handle {
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      width: 8px;
+      cursor: col-resize;
+      background: transparent;
+    }
+    th .resize-handle:hover {
+      background: var(--pico-muted-border-color);
+    }
+    .id-col { width: 16ch; }
+    .cron-col { width: 16ch; }
+    .cmd-col { width: 24ch; white-space: normal; word-break: break-word; }
+    .target-col { width: 18ch; white-space: normal; word-break: break-word; }
+    .time-col { width: 26ch; }
+    .status-col { width: 14ch; }
+    .error-col { width: 26ch; white-space: normal; word-break: break-word; }
+    .actions-col { width: 10ch; }
+    .tabs { margin-bottom: 1em; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .cron-preview { margin-top: 0.5rem; font-size: 0.9em; }
+    .cron-preview ul { list-style: none; padding-left: 0; }
+    .cron-preview .error { color: var(--pico-form-element-invalid-border-color); }
+    .cron-builder { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; }
+    .cron-builder select, .cron-builder input { width: auto; }
+    .cron-expression { font-family: monospace; background: var(--pico-code-background-color); padding: 0.25rem 0.5rem; border-radius: 4px; }
+    .result-block { margin-top: 1em; }
+    .result-block pre { background: var(--pico-code-background-color); padding: 0.5rem; border-radius: 4px; max-height: 200px; overflow: auto; }
+    .result-block .error { color: var(--pico-form-element-invalid-border-color); }
+    .result-block .success { color: var(--pico-form-element-valid-border-color); }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>🐙 Octocron Dashboard</h1>
+  <main class="container-fluid">
+    <nav>
+      <ul><li><h1>🐙 Octocron</h1></li></ul>
+      <ul>
+        <li><button id="themeToggle">☀️/🌙</button></li>
+      </ul>
+    </nav>
 
-    <!-- Раздел заданий -->
-    <div class="section">
-      <h2>Задания</h2>
-      <button onclick="refreshJobs()">Обновить</button>
-      <button onclick="showCreateJob()">Создать задание</button>
-      <div id="createJobForm" class="hidden">
-        <div class="form-group">
-          <label>Название:</label>
-          <input type="text" id="jobName" required>
-        </div>
-        <div class="form-group">
-          <label>Cron-выражение:</label>
-          <input type="text" id="jobCron" placeholder="*/5 * * * * *" required>
-        </div>
-        <div class="form-group">
-          <label>Команда:</label>
-          <input type="text" id="jobCommand" required>
-        </div>
-        <div class="form-group">
-          <label>Цели:</label>
-          <select id="jobTargets" multiple></select>
-          <small>Удерживайте Ctrl/Cmd для выбора нескольких</small>
-        </div>
-        <button onclick="createJob()">Сохранить</button>
-        <button onclick="hideCreateJob()">Отмена</button>
-      </div>
-      <table>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Название</th>
-            <th>Cron</th>
-            <th>Команда</th>
-            <th>Цели</th>
-            <th>Действия</th>
-          </tr>
-        </thead>
-        <tbody id="jobsTable"></tbody>
-      </table>
+    <div class="tabs">
+      <button id="tabJobs" class="active">Задания</button>
+      <button id="tabHistory">История</button>
+      <button id="tabTargets">Целевые хосты</button>
+      <button id="tabExecute">⚡ Выполнить</button>
     </div>
 
-    <!-- Раздел истории -->
-    <div class="section">
-      <h2>История выполнения</h2>
-      <div class="form-group">
-        <label>ID задания:</label>
-        <input type="text" id="historyJobId">
-        <button onclick="showHistory()">Показать последние 10</button>
-      </div>
-      <div id="historyLog" class="log hidden"></div>
+    <!-- Задания -->
+    <div id="sectionJobs" class="tab-content active">
+      <section>
+        <h2>Задания</h2>
+        <button id="createJobBtn">Создать задание</button>
+        <div id="createJobForm" class="hidden">
+          <fieldset>
+            <label>Название <input type="text" id="jobName"></label>
+
+            <!-- Конструктор Cron (5 полей) -->
+            <label>Расписание</label>
+            <div class="cron-builder">
+              <select id="cronType">
+                <option value="minutes">Каждые N минут</option>
+                <option value="hourly">Каждый час в минуту</option>
+                <option value="daily">Каждый день в</option>
+                <option value="weekly">День недели</option>
+                <option value="monthly">День месяца</option>
+                <option value="custom">Произвольное</option>
+              </select>
+              <span id="cronTypeInputs"></span>
+            </div>
+            <small>Текущее выражение: <code id="cronDisplay" class="cron-expression">*/10 * * * *</code></small>
+            <button type="button" onclick="checkCron()">Проверить</button>
+            <div id="cronPreview" class="cron-preview hidden"></div>
+
+            <label>Команда <input type="text" id="jobCommand"></label>
+            <label>Цели <select id="jobTargets" multiple></select></label>
+            <small>Удерживайте Ctrl/Cmd для выбора нескольких</small>
+            <button id="saveJobBtn">Сохранить</button>
+            <button id="cancelJobBtn" class="secondary">Отмена</button>
+          </fieldset>
+        </div>
+        <table id="jobsTableContainer">
+          <thead>
+            <tr>
+              <th class="id-col">ID<span class="resize-handle"></span></th>
+              <th>Название<span class="resize-handle"></span></th>
+              <th class="cron-col">Cron<span class="resize-handle"></span></th>
+              <th class="cmd-col">Команда<span class="resize-handle"></span></th>
+              <th class="target-col">Цели<span class="resize-handle"></span></th>
+              <th class="actions-col">Действия<span class="resize-handle"></span></th>
+            </tr>
+          </thead>
+          <tbody id="jobsTable"></tbody>
+        </table>
+      </section>
     </div>
 
-    <!-- Раздел целевых хостов -->
-    <div class="section">
-      <h2>Целевые хосты</h2>
-      <button onclick="refreshTargets()">Обновить</button>
-      <button onclick="showAddTarget()">Добавить хост</button>
-      <div id="addTargetForm" class="hidden">
-        <div class="form-group">
-          <label>Название:</label>
-          <input type="text" id="targetName" required>
+    <!-- История -->
+    <div id="sectionHistory" class="tab-content">
+      <section>
+        <h2>Выполненные задания</h2>
+        <div style="margin-bottom: 1em;">
+          <label>Фильтр:
+            <select id="statusFilter">
+              <option value="all">Все</option>
+              <option value="success">Успешно</option>
+              <option value="error">Ошибка</option>
+            </select>
+          </label>
+          <button id="refreshHistoryBtn">Обновить</button>
         </div>
-        <div class="form-group">
-          <label>Адрес:</label>
-          <input type="text" id="targetAddress" required>
-        </div>
-        <div class="form-group">
-          <label>Порт:</label>
-          <input type="number" id="targetPort" value="22" required>
-        </div>
-        <div class="form-group">
-          <label>Пользователь:</label>
-          <input type="text" id="targetUser" required>
-        </div>
-        <div class="form-group">
-          <label>Путь к ключу:</label>
-          <input type="text" id="targetKey" required>
-        </div>
-        <button onclick="addTarget()">Сохранить</button>
-        <button onclick="hideAddTarget()">Отмена</button>
-      </div>
-      <table>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Название</th>
-            <th>Адрес</th>
-            <th>Порт</th>
-            <th>Пользователь</th>
-            <th>Действия</th>
-          </tr>
-        </thead>
-        <tbody id="targetsTable"></tbody>
-      </table>
+        <table id="historyTableContainer">
+          <thead>
+            <tr>
+              <th class="time-col">Время<span class="resize-handle"></span></th>
+              <th>Задание<span class="resize-handle"></span></th>
+              <th>Цель<span class="resize-handle"></span></th>
+              <th class="status-col">Статус<span class="resize-handle"></span></th>
+              <th class="error-col">Ошибка<span class="resize-handle"></span></th>
+            </tr>
+          </thead>
+          <tbody id="historyTable"></tbody>
+        </table>
+      </section>
     </div>
-  </div>
+
+    <!-- Целевые хосты -->
+    <div id="sectionTargets" class="tab-content">
+      <section>
+        <h2>Целевые хосты</h2>
+        <button id="addTargetBtn">Добавить хост</button>
+        <div id="addTargetForm" class="hidden">
+          <fieldset>
+            <label>Название <input type="text" id="targetName"></label>
+            <label>Адрес <input type="text" id="targetAddress"></label>
+            <label>Порт <input type="number" id="targetPort" value="22"></label>
+            <label>Пользователь <input type="text" id="targetUser"></label>
+            <label>Ключ <input type="text" id="targetKey"></label>
+            <button id="saveTargetBtn">Сохранить</button>
+            <button id="cancelTargetBtn" class="secondary">Отмена</button>
+          </fieldset>
+        </div>
+        <table id="targetsTableContainer">
+          <thead>
+            <tr>
+              <th class="id-col">ID<span class="resize-handle"></span></th>
+              <th>Название<span class="resize-handle"></span></th>
+              <th>Адрес<span class="resize-handle"></span></th>
+              <th>Порт<span class="resize-handle"></span></th>
+              <th>Пользователь<span class="resize-handle"></span></th>
+              <th class="actions-col">Действия<span class="resize-handle"></span></th>
+            </tr>
+          </thead>
+          <tbody id="targetsTable"></tbody>
+        </table>
+      </section>
+    </div>
+
+    <!-- Разовое выполнение -->
+    <div id="sectionExecute" class="tab-content">
+      <section>
+        <h2>Разовое выполнение команды</h2>
+        <div class="form-group">
+          <label>Целевые хосты</label>
+          <select id="execTargets" multiple></select>
+          <small>Выберите один или несколько хостов</small>
+        </div>
+        <div class="form-group">
+          <label>Команда</label>
+          <textarea id="execCommand" rows="4" placeholder="apt-get update && apt-get install -y postgresql-15" style="width:100%"></textarea>
+        </div>
+        <button id="execRunBtn">Выполнить</button>
+        <div id="execResults" class="result-block hidden">
+          <h3>Результаты</h3>
+          <div id="execResultsContent"></div>
+        </div>
+      </section>
+    </div>
+  </main>
 
   <script>
     const API = '/api';
+    let ws;
+    let allHistory = [];
+    let jobsMap = new Map();
+    let targetsMap = new Map();
+
+    // ========== Drag-to-resize для колонок ==========
+    function enableColumnResize(tableSelector) {
+      const table = document.querySelector(tableSelector);
+      if (!table) return;
+      const headers = table.querySelectorAll('th');
+      headers.forEach(header => {
+        const handle = header.querySelector('.resize-handle');
+        if (!handle) return;
+        let startX, startWidth;
+        handle.addEventListener('mousedown', function(e) {
+          e.preventDefault();
+          startX = e.clientX;
+          startWidth = header.offsetWidth;
+          function onMouseMove(e) {
+            const newWidth = Math.max(50, startWidth + (e.clientX - startX));
+            header.style.width = newWidth + 'px';
+          }
+          function onMouseUp() {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+          }
+          document.addEventListener('mousemove', onMouseMove);
+          document.addEventListener('mouseup', onMouseUp);
+        });
+      });
+    }
+
+    function applyResizeToAllTables() {
+      enableColumnResize('#jobsTableContainer');
+      enableColumnResize('#historyTableContainer');
+      enableColumnResize('#targetsTableContainer');
+    }
+
+    // ========== Cron builder ==========
+    function initCronBuilder() {
+      const typeSelect = document.getElementById('cronType');
+      const inputsSpan = document.getElementById('cronTypeInputs');
+      const updateInputs = () => {
+        const type = typeSelect.value;
+        let html = '';
+        if (type === 'minutes') {
+          html = 'каждые <input type="number" id="cronMinInterval" min="1" max="59" value="10" style="width:70px"> мин.';
+        } else if (type === 'hourly') {
+          html = 'в минуту <input type="number" id="cronHourMinute" min="0" max="59" value="0" style="width:70px">';
+        } else if (type === 'daily') {
+          html = 'в <input type="time" id="cronDailyTime" value="00:00" step="60">';
+        } else if (type === 'weekly') {
+          html = `в <select id="cronWeekDay">
+            <option value="0">Воскресенье</option><option value="1">Понедельник</option><option value="2">Вторник</option>
+            <option value="3">Среда</option><option value="4">Четверг</option><option value="5">Пятница</option>
+            <option value="6">Суббота</option></select> в <input type="time" id="cronWeeklyTime" value="00:00" step="60">`;
+        } else if (type === 'monthly') {
+          html = 'число <input type="number" id="cronMonthDay" min="1" max="31" value="1" style="width:70px"> в <input type="time" id="cronMonthlyTime" value="00:00" step="60">';
+        } else if (type === 'custom') {
+          html = '<input type="text" id="cronCustomExpr" placeholder="* * * * *" style="width:160px">';
+        }
+        inputsSpan.innerHTML = html;
+        updateCronDisplay();
+      };
+      typeSelect.addEventListener('change', updateInputs);
+      inputsSpan.addEventListener('input', updateCronDisplay);
+      inputsSpan.addEventListener('change', updateCronDisplay);
+      updateInputs();
+    }
+
+    function getCronExpression() {
+      const type = document.getElementById('cronType').value;
+      if (type === 'minutes') {
+        const interval = document.getElementById('cronMinInterval')?.value || 10;
+        return `*/${interval} * * * *`;
+      } else if (type === 'hourly') {
+        const minute = document.getElementById('cronHourMinute')?.value || 0;
+        return `${minute} * * * *`;
+      } else if (type === 'daily') {
+        const time = document.getElementById('cronDailyTime')?.value || '00:00';
+        const [h, m] = time.split(':');
+        return `${m} ${h} * * *`;
+      } else if (type === 'weekly') {
+        const day = document.getElementById('cronWeekDay')?.value || 0;
+        const time = document.getElementById('cronWeeklyTime')?.value || '00:00';
+        const [h, m] = time.split(':');
+        return `${m} ${h} * * ${day}`;
+      } else if (type === 'monthly') {
+        const day = document.getElementById('cronMonthDay')?.value || 1;
+        const time = document.getElementById('cronMonthlyTime')?.value || '00:00';
+        const [h, m] = time.split(':');
+        return `${m} ${h} ${day} * *`;
+      } else if (type === 'custom') {
+        return document.getElementById('cronCustomExpr')?.value || '* * * * *';
+      }
+      return '* * * * *';
+    }
+
+    function updateCronDisplay() {
+      document.getElementById('cronDisplay').textContent = getCronExpression();
+    }
+
+    async function checkCron() {
+      const expr = getCronExpression();
+      const previewDiv = document.getElementById('cronPreview');
+      if (!expr) {
+        previewDiv.classList.add('hidden');
+        return;
+      }
+      try {
+        const data = await apiFetch('/cron/preview', 'POST', { expression: expr });
+        previewDiv.classList.remove('hidden');
+        if (data.valid) {
+          previewDiv.innerHTML = '<strong>Следующие запуски:</strong><ul>' +
+            data.next.map(t => `<li>${new Date(t).toLocaleString()}</li>`).join('') +
+            '</ul>';
+          previewDiv.style.color = 'var(--pico-color)';
+        } else {
+          previewDiv.innerHTML = `<span class="error">Ошибка: ${data.error}</span>`;
+        }
+      } catch(e) {
+        previewDiv.classList.remove('hidden');
+        previewDiv.innerHTML = `<span class="error">Ошибка проверки: ${e.message}</span>`;
+      }
+    }
+
+    function connectWebSocket() {
+      const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      ws = new WebSocket(`${protocol}//${location.host}/ws`);
+      ws.onmessage = (e) => {
+        const event = JSON.parse(e.data);
+        if (event.type === 'job_executed') {
+          refreshJobs();
+          fetchAllHistory();
+        } else if (event.type === 'job_created' || event.type === 'target_updated') {
+          refreshJobs();
+          refreshTargets();
+        }
+      };
+      ws.onclose = () => { setTimeout(connectWebSocket, 3000); };
+    }
+
+    // Табы
+    document.getElementById('tabJobs').addEventListener('click', () => switchTab('sectionJobs', 'tabJobs'));
+    document.getElementById('tabHistory').addEventListener('click', () => { switchTab('sectionHistory', 'tabHistory'); fetchAllHistory(); });
+    document.getElementById('tabTargets').addEventListener('click', () => switchTab('sectionTargets', 'tabTargets'));
+    document.getElementById('tabExecute').addEventListener('click', () => {
+      switchTab('sectionExecute', 'tabExecute');
+      populateExecTargets();
+    });
+
+    function switchTab(sectionId, tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.getElementById(sectionId).classList.add('active');
+      document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+    }
 
     async function apiFetch(url, method = 'GET', body = null) {
       const opts = { method, headers: { 'Content-Type': 'application/json' } };
@@ -139,126 +373,162 @@
       return resp.json();
     }
 
-    // Загрузка целей в выпадающий список
+    // Задания
+    async function refreshJobs() {
+      try {
+        const data = await apiFetch('/jobs');
+        jobsMap.clear();
+        (data.jobs || []).forEach(j => jobsMap.set(j.id, j.name));
+        const tbody = document.getElementById('jobsTable');
+        tbody.innerHTML = (data.jobs || []).map(job => `
+          <tr>
+            <td class="id-col" title="${job.id}">${job.id}</td>
+            <td>${job.name}</td>
+            <td class="cron-col">${job.cron_expression || job.cronExpression || '-'}</td>
+            <td class="cmd-col">${job.command}</td>
+            <td class="target-col">${(job.targets || []).map(tid => targetsMap.get(tid) || tid).join(', ') || '-'}</td>
+            <td class="actions-col"><button onclick="deleteJob('${job.id}')">Удалить</button></td>
+          </tr>
+        `).join('') || '<tr><td colspan="6">Нет заданий</td></tr>';
+        applyResizeToAllTables();
+      } catch(e) { console.error(e); }
+    }
+
+    document.getElementById('createJobBtn').onclick = () => {
+      document.getElementById('createJobForm').classList.remove('hidden');
+      populateTargetSelect();
+      initCronBuilder();
+    };
+    document.getElementById('cancelJobBtn').onclick = () => {
+      document.getElementById('createJobForm').classList.add('hidden');
+    };
+
     async function populateTargetSelect() {
       try {
         const data = await apiFetch('/targets');
         const select = document.getElementById('jobTargets');
         select.innerHTML = '';
         (data.targets || []).forEach(t => {
-          const option = document.createElement('option');
-          option.value = t.id;
-          option.text = `${t.name} (${t.id.substring(0,8)}...)`;
-          select.appendChild(option);
+          const opt = document.createElement('option');
+          opt.value = t.id;
+          opt.text = `${t.name} (${t.id})`;
+          select.appendChild(opt);
         });
-      } catch(e) { /* игнорируем */ }
+      } catch(e) { console.error(e); }
     }
 
-    // Задания
-    async function refreshJobs() {
-      try {
-        const data = await apiFetch('/jobs');
-        const tbody = document.getElementById('jobsTable');
-        tbody.innerHTML = (data.jobs || []).map(job => `
-          <tr>
-            <td title="${job.id}">${job.id.substring(0,8)}...</td>
-            <td>${job.name}</td>
-            <td>${job.cronExpression || job.cron_expression || '-'}</td>
-            <td>${job.command}</td>
-            <td>${(job.targets || []).join(', ') || '-'}</td>
-            <td>
-              <button onclick="deleteJob('${job.id}')">Удалить</button>
-            </td>
-          </tr>
-        `).join('') || '<tr><td colspan="6">Нет заданий</td></tr>';
-      } catch(e) {
-        alert('Ошибка загрузки заданий: ' + e.message);
-      }
-    }
-
-    function showCreateJob() {
-      document.getElementById('createJobForm').classList.remove('hidden');
-      populateTargetSelect();
-    }
-    function hideCreateJob() {
-      document.getElementById('createJobForm').classList.add('hidden');
-    }
-
-    async function createJob() {
+    document.getElementById('saveJobBtn').onclick = async () => {
       const name = document.getElementById('jobName').value.trim();
-      const cron = document.getElementById('jobCron').value.trim();
+      const cron = getCronExpression();
       const command = document.getElementById('jobCommand').value.trim();
-      const select = document.getElementById('jobTargets');
-      const targets = Array.from(select.selectedOptions).map(o => o.value);
+      const targets = Array.from(document.getElementById('jobTargets').selectedOptions).map(o => o.value);
+      if (!targets.length) return alert('Выберите цель!');
       try {
         await apiFetch('/jobs', 'POST', { name, cron_expression: cron, command, targets });
-        hideCreateJob();
-        await refreshJobs();
+        document.getElementById('createJobForm').classList.add('hidden');
+        refreshJobs();
       } catch(e) {
         alert('Ошибка создания задания: ' + e.message);
       }
-    }
+    };
 
     async function deleteJob(id) {
-      if (!confirm('Удалить задание ' + id + '?')) return;
-      try {
-        await apiFetch('/jobs/' + id, 'DELETE');
-        await refreshJobs();
-      } catch(e) {
-        alert('Ошибка удаления: ' + e.message);
-      }
+      if (!confirm('Удалить задание?')) return;
+      await apiFetch('/jobs/' + id, 'DELETE');
+      refreshJobs();
     }
 
     // История
-    async function showHistory() {
-      const jobId = document.getElementById('historyJobId').value.trim();
-      if (!jobId) return alert('Введите ID задания');
+    async function fetchAllHistory() {
       try {
-        const data = await apiFetch('/jobs/' + jobId + '/history?limit=10');
-        const logDiv = document.getElementById('historyLog');
-        logDiv.classList.remove('hidden');
-        logDiv.innerHTML = (data.history || []).map(e =>
-          `[${e.startTime}] код: ${e.exitCode}\n${e.output || ''}${e.error ? 'Ошибка: ' + e.error : ''}`
-        ).join('\n---\n') || 'Нет записей';
-      } catch(e) {
-        alert('Ошибка: ' + e.message);
-      }
+        const jobsData = await apiFetch('/jobs');
+        const jobs = jobsData.jobs || [];
+        const targetsData = await apiFetch('/targets');
+        targetsMap.clear();
+        (targetsData.targets || []).forEach(t => targetsMap.set(t.id, t.name));
+
+        let allExecutions = [];
+        for (const job of jobs) {
+          try {
+            const histData = await apiFetch(`/jobs/${job.id}/history?limit=50`);
+            if (histData.history) {
+              allExecutions = allExecutions.concat(histData.history.map(e => ({ ...e, jobName: job.name })));
+            }
+          } catch(e) {}
+        }
+        allExecutions.sort((a,b) => {
+          const aSec = (a.start_time && a.start_time.seconds) ? a.start_time.seconds : 0;
+          const bSec = (b.start_time && b.start_time.seconds) ? b.start_time.seconds : 0;
+          return bSec - aSec;
+        });
+        allHistory = allExecutions;
+        renderHistory();
+      } catch(e) { console.error(e); }
     }
 
-    // Цели
+    function renderHistory() {
+      const filter = document.getElementById('statusFilter').value;
+      const filtered = allHistory.filter(e => {
+        const code = e.exit_code || 0;
+        if (filter === 'success') return code === 0;
+        if (filter === 'error') return code !== 0;
+        return true;
+      });
+      const tbody = document.getElementById('historyTable');
+      tbody.innerHTML = filtered.map(e => {
+        let timeStr = '—';
+        if (e.start_time && typeof e.start_time.seconds !== 'undefined') {
+          timeStr = new Date(e.start_time.seconds * 1000).toLocaleString();
+        }
+        const jobName = jobsMap.get(e.job_id) || e.jobName || e.job_id || '—';
+        const targetName = targetsMap.get(e.target_id) || e.target_id || '—';
+        const code = e.exit_code || 0;
+        const status = code === 0 ? '✅ Успешно' : '❌ Ошибка';
+        const errorText = e.error || (code !== 0 ? 'Ненулевой код' : '');
+        return `
+          <tr>
+            <td class="time-col">${timeStr}</td>
+            <td title="${e.job_id || ''}">${jobName}</td>
+            <td title="${e.target_id || ''}">${targetName}</td>
+            <td class="status-col">${status}</td>
+            <td class="error-col">${errorText}</td>
+          </tr>
+        `;
+      }).join('') || '<tr><td colspan="5">Нет записей</td></tr>';
+      applyResizeToAllTables();
+    }
+
+    document.getElementById('statusFilter').onchange = renderHistory;
+    document.getElementById('refreshHistoryBtn').onclick = fetchAllHistory;
+
+    // Целевые хосты
     async function refreshTargets() {
       try {
         const data = await apiFetch('/targets');
+        targetsMap.clear();
+        (data.targets || []).forEach(t => targetsMap.set(t.id, t.name));
         const tbody = document.getElementById('targetsTable');
         tbody.innerHTML = (data.targets || []).map(t => `
           <tr>
-            <td title="${t.id}">${t.id.substring(0,8)}...</td>
+            <td class="id-col" title="${t.id}">${t.id}</td>
             <td>${t.name}</td>
             <td>${t.address}</td>
             <td>${t.port}</td>
             <td>${t.user}</td>
-            <td>
-              <button onclick="deleteTarget('${t.id}')">Удалить</button>
-            </td>
+            <td class="actions-col"><button onclick="deleteTarget('${t.id}')">Удалить</button></td>
           </tr>
         `).join('') || '<tr><td colspan="6">Нет целевых хостов</td></tr>';
-        // После обновления таблицы целей, обновим и выпадающий список, если он видим
-        if (!document.getElementById('createJobForm').classList.contains('hidden')) {
-          populateTargetSelect();
-        }
-      } catch(e) {
-        alert('Ошибка загрузки целей: ' + e.message);
-      }
+        applyResizeToAllTables();
+      } catch(e) { console.error(e); }
     }
 
-    function showAddTarget() {
+    document.getElementById('addTargetBtn').onclick = () => {
       document.getElementById('addTargetForm').classList.remove('hidden');
-    }
-    function hideAddTarget() {
+    };
+    document.getElementById('cancelTargetBtn').onclick = () => {
       document.getElementById('addTargetForm').classList.add('hidden');
-    }
-
-    async function addTarget() {
+    };
+    document.getElementById('saveTargetBtn').onclick = async () => {
       const name = document.getElementById('targetName').value.trim();
       const address = document.getElementById('targetAddress').value.trim();
       const port = parseInt(document.getElementById('targetPort').value) || 22;
@@ -266,26 +536,91 @@
       const keyPath = document.getElementById('targetKey').value.trim();
       try {
         await apiFetch('/targets', 'POST', { name, address, port, user, key_path: keyPath });
-        hideAddTarget();
-        await refreshTargets();
-      } catch(e) {
-        alert('Ошибка добавления хоста: ' + e.message);
-      }
-    }
+        document.getElementById('addTargetForm').classList.add('hidden');
+        refreshTargets();
+      } catch(e) { alert('Ошибка: ' + e); }
+    };
 
     async function deleteTarget(id) {
-      if (!confirm('Удалить хост ' + id + '?')) return;
-      try {
-        await apiFetch('/targets/' + id, 'DELETE');
-        await refreshTargets();
-      } catch(e) {
-        alert('Ошибка удаления: ' + e.message);
-      }
+      if (!confirm('Удалить хост?')) return;
+      await apiFetch('/targets/' + id, 'DELETE');
+      refreshTargets();
     }
 
-    // Инициализация
+    // ----- Разовое выполнение -----
+    async function populateExecTargets() {
+      try {
+        const data = await apiFetch('/targets');
+        const select = document.getElementById('execTargets');
+        select.innerHTML = '';
+        (data.targets || []).forEach(t => {
+          const opt = document.createElement('option');
+          opt.value = t.id;
+          opt.text = `${t.name} (${t.id.substring(0,8)}...)`;
+          select.appendChild(opt);
+        });
+      } catch(e) { console.error(e); }
+    }
+
+    document.getElementById('execRunBtn').addEventListener('click', async () => {
+      const targets = Array.from(document.getElementById('execTargets').selectedOptions).map(o => o.value);
+      const command = document.getElementById('execCommand').value.trim();
+      if (!targets.length) return alert('Выберите хотя бы один хост');
+      if (!command) return alert('Введите команду');
+
+      const resultsDiv = document.getElementById('execResults');
+      const contentDiv = document.getElementById('execResultsContent');
+      resultsDiv.classList.remove('hidden');
+      contentDiv.innerHTML = '<p>Выполнение...</p>';
+
+      try {
+        const data = await apiFetch('/execute', 'POST', { targets, command });
+        renderExecResults(data.results);
+      } catch(e) {
+        contentDiv.innerHTML = `<p class="error">Ошибка: ${e.message}</p>`;
+      }
+    });
+
+    function renderExecResults(results) {
+      const contentDiv = document.getElementById('execResultsContent');
+      if (!results || results.length === 0) {
+        contentDiv.innerHTML = '<p>Нет результатов.</p>';
+        return;
+      }
+      let html = '';
+      results.forEach(r => {
+        const statusClass = r.exit_code === 0 ? 'success' : 'error';
+        html += `
+          <div style="border:1px solid var(--pico-muted-border-color); padding:0.8rem; margin-bottom:0.8rem; border-radius:4px;">
+            <strong>${r.target_name || r.target_id}</strong> (код: ${r.exit_code}) 
+            <span class="${statusClass}">${r.exit_code === 0 ? '✓' : '✗'}</span>
+            ${r.error ? `<div class="error">Ошибка: ${r.error}</div>` : ''}
+            <details>
+              <summary>Вывод</summary>
+              <pre>${escapeHtml(r.stdout || '')}</pre>
+              ${r.stderr ? `<pre class="error">STDERR: ${escapeHtml(r.stderr)}</pre>` : ''}
+            </details>
+          </div>`;
+      });
+      contentDiv.innerHTML = html;
+    }
+
+    function escapeHtml(text) {
+      return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    // Тёмная тема
+    document.getElementById('themeToggle').onclick = () => {
+      const html = document.documentElement;
+      html.dataset.theme = html.dataset.theme === 'light' ? 'dark' : 'light';
+    };
+
+    // Старт
     refreshJobs();
     refreshTargets();
+    connectWebSocket();
+    initCronBuilder();
+    applyResizeToAllTables();
   </script>
 </body>
 </html>

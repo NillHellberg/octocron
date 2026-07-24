@@ -1,13 +1,14 @@
 package scheduler
 
 import (
-	"fmt"
 	"encoding/json"
+	"fmt"
 	"log"
 	"sync"
 	"time"
 
 	"github.com/NillHellberg/octocron/api/gen/octocron"
+	"github.com/NillHellberg/octocron/internal/events"
 	"github.com/NillHellberg/octocron/internal/executor"
 	"github.com/NillHellberg/octocron/internal/fsm"
 	"github.com/hashicorp/raft"
@@ -16,14 +17,14 @@ import (
 )
 
 type Scheduler struct {
-	exec         executor.SSHExecutor
-	raft         *raft.Raft
-	store        *fsm.JobStore
+	exec    executor.SSHExecutor
+	raft    *raft.Raft
+	store   *fsm.JobStore
 
-	stopCh       chan struct{}
-	leaderCh     chan bool
-	isLeader     bool
-	mu           sync.Mutex
+	stopCh   chan struct{}
+	leaderCh chan bool
+	isLeader bool
+	mu       sync.Mutex
 
 	lastLocalRun map[string]time.Time
 	localRunMu   sync.Mutex
@@ -120,7 +121,7 @@ func (s *Scheduler) checkAndExecute() {
 			)
 			endTime := time.Now()
 			if err != nil {
-    				log.Printf("Job %s on %s ERROR: %v (stdout: %q, stderr: %q)", job.Id, target.Name, err, stdout, stderr)
+				log.Printf("Job %s on %s ERROR: %v (stdout: %q, stderr: %q)", job.Id, target.Name, err, stdout, stderr)
 			} else {
 				log.Printf("Job %s on %s finished: code=%d", job.Id, target.Name, exitCode)
 			}
@@ -136,7 +137,6 @@ func (s *Scheduler) checkAndExecute() {
 				Error:     stderr,
 			}
 			if err != nil {
-				// SSH-ошибка тоже сохраняется
 				execution.Error = fmt.Sprintf("ssh error: %v", err)
 				execution.ExitCode = -1
 			}
@@ -152,6 +152,18 @@ func (s *Scheduler) checkAndExecute() {
 			f := s.raft.Apply(data, 5*time.Second)
 			if f.Error() != nil {
 				log.Printf("Failed to save execution for job %s: %v", job.Id, f.Error())
+			}
+
+			// Отправляем событие о выполнении
+			if f.Error() == nil {
+				msg, _ := json.Marshal(map[string]interface{}{
+					"type":      "job_executed",
+					"job_id":    job.Id,
+					"target_id": targetID,
+					"exit_code": exitCode,
+					"time":      time.Now().Format(time.RFC3339),
+				})
+				events.Broadcast <- msg
 			}
 		}
 
@@ -178,8 +190,9 @@ func (s *Scheduler) checkAndExecute() {
 	}
 }
 
+// Парсер теперь использует только 5 полей (минуты, часы, дни, месяцы, дни недели)
 func (s *Scheduler) shouldRun(job *octocron.Job, now time.Time) (bool, error) {
-	parser := cron.NewParser(cron.SecondOptional | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor)
+	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor)
 	schedule, err := parser.Parse(job.CronExpression)
 	if err != nil {
 		return false, err
@@ -240,7 +253,6 @@ func (s *Scheduler) ListJobs() []*octocron.Job {
 	return s.store.ListJobs()
 }
 
-// Методы для целевых хостов
 func (s *Scheduler) AddTarget(target *octocron.Target) error {
 	if s.raft.State() != raft.Leader {
 		return ErrNotLeader

@@ -12,15 +12,20 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/NillHellberg/octocron/api/gen/octocron"
 	grpcapi "github.com/NillHellberg/octocron/internal/api/grpc"
-	"github.com/NillHellberg/octocron/internal/scheduler"
+	"github.com/NillHellberg/octocron/internal/events"
+	"github.com/NillHellberg/octocron/internal/executor"
 	"github.com/NillHellberg/octocron/internal/fsm"
+	"github.com/NillHellberg/octocron/internal/scheduler"
 	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
 	"github.com/hashicorp/raft"
-	raftboltdb "github.com/hashicorp/raft-boltdb"
+	raftboltdb "github.com/hashicorp/raft-boltdb/v2"
+	"github.com/robfig/cron/v3"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -31,6 +36,73 @@ import (
 
 //go:embed web/index.html
 var webIndex []byte
+
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool { return true },
+}
+
+var (
+	clients   = make(map[*websocket.Conn]bool)
+	clientsMu sync.Mutex
+)
+
+// Кастомный логгер для Raft – отфильтровывает "Rollback failed: tx closed"
+type raftLogger struct {
+	*log.Logger
+}
+
+func (l *raftLogger) Write(p []byte) (int, error) {
+	msg := string(p)
+	if strings.Contains(msg, "Rollback failed: tx closed") {
+		return len(p), nil // игнорируем
+	}
+	return l.Logger.Writer().Write(p)
+}
+
+func newRaftLogger() *raftLogger {
+	return &raftLogger{
+		Logger: log.New(os.Stderr, "", log.LstdFlags),
+	}
+}
+
+func handleWebSocket(w http.ResponseWriter, r *http.Request) {
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println("WebSocket upgrade error:", err)
+		return
+	}
+	clientsMu.Lock()
+	clients[conn] = true
+	clientsMu.Unlock()
+
+	defer func() {
+		clientsMu.Lock()
+		delete(clients, conn)
+		clientsMu.Unlock()
+		conn.Close()
+	}()
+
+	for {
+		_, _, err := conn.ReadMessage()
+		if err != nil {
+			break
+		}
+	}
+}
+
+func startBroadcaster() {
+	for msg := range events.Broadcast {
+		clientsMu.Lock()
+		for client := range clients {
+			err := client.WriteMessage(websocket.TextMessage, msg)
+			if err != nil {
+				client.Close()
+				delete(clients, client)
+			}
+		}
+		clientsMu.Unlock()
+	}
+}
 
 func main() {
 	var (
@@ -48,8 +120,10 @@ func main() {
 	}
 
 	store := fsm.NewJobStore()
+
 	config := raft.DefaultConfig()
 	config.LocalID = raft.ServerID(*nodeID)
+	config.LogOutput = newRaftLogger()
 
 	addr, err := net.ResolveTCPAddr("tcp", *bindAddr)
 	if err != nil {
@@ -131,6 +205,96 @@ func main() {
 	go func() {
 		mux := http.NewServeMux()
 
+		// Cron preview (валидация + предпросмотр)
+		mux.HandleFunc("/api/cron/preview", func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodPost {
+				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
+			var req struct {
+				Expression string `json:"expression"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				http.Error(w, "invalid JSON", http.StatusBadRequest)
+				return
+			}
+			parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor)
+			schedule, err := parser.Parse(req.Expression)
+			if err != nil {
+				writeJSON(w, map[string]interface{}{
+					"valid": false,
+					"error": err.Error(),
+				})
+				return
+			}
+			now := time.Now()
+			var nextTimes []string
+			next := schedule.Next(now)
+			for i := 0; i < 5; i++ {
+				nextTimes = append(nextTimes, next.Format(time.RFC3339))
+				next = schedule.Next(next)
+			}
+			writeJSON(w, map[string]interface{}{
+				"valid": true,
+				"next":  nextTimes,
+			})
+		})
+
+		// Разовое выполнение команды
+		mux.HandleFunc("/api/execute", func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodPost {
+				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
+			var req struct {
+				Targets []string `json:"targets"`
+				Command string   `json:"command"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				http.Error(w, "invalid JSON", http.StatusBadRequest)
+				return
+			}
+
+			exec := executor.NewSSHExecutor()
+			type targetResult struct {
+				TargetID   string `json:"target_id"`
+				TargetName string `json:"target_name"`
+				ExitCode   int    `json:"exit_code"`
+				Stdout     string `json:"stdout"`
+				Stderr     string `json:"stderr"`
+				Error      string `json:"error,omitempty"`
+			}
+			results := make([]targetResult, 0)
+
+			for _, tid := range req.Targets {
+				t, err := sched.GetTarget(tid)
+				if err != nil {
+					results = append(results, targetResult{
+						TargetID: tid,
+						Error:    fmt.Sprintf("target not found: %v", err),
+					})
+					continue
+				}
+				exitCode, stdout, stderr, err := exec.Execute(t.Address, int(t.Port), t.User, t.KeyPath, req.Command)
+				tr := targetResult{
+					TargetID:   t.Id,
+					TargetName: t.Name,
+					ExitCode:   exitCode,
+					Stdout:     stdout,
+					Stderr:     stderr,
+				}
+				if err != nil {
+					tr.Error = err.Error()
+				}
+				results = append(results, tr)
+			}
+
+			writeJSON(w, map[string]interface{}{
+				"results": results,
+			})
+		})
+
+		// REST API: Задания
 		mux.HandleFunc("/api/jobs", func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
 			case http.MethodGet:
@@ -163,6 +327,7 @@ func main() {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		})
 
+		// REST API: Целевые хосты
 		mux.HandleFunc("/api/targets", func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
 			case http.MethodGet:
@@ -187,6 +352,10 @@ func main() {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		})
 
+		// WebSocket
+		mux.HandleFunc("/ws", handleWebSocket)
+
+		// Статика (веб-интерфейс)
 		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Path == "/" || r.URL.Path == "/index.html" {
 				w.Header().Set("Content-Type", "text/html")
@@ -196,16 +365,18 @@ func main() {
 			http.NotFound(w, r)
 		})
 
+		go startBroadcaster()
+
 		log.Printf("Web interface started on http://0.0.0.0:%s", *httpPort)
 		if err := http.ListenAndServe(":"+*httpPort, mux); err != nil {
 			log.Fatalf("HTTP server failed: %v", err)
 		}
 	}()
 
-	// Блокируем main, пока работают серверы
-	select {}
+	select {} // блокируем main навсегда
 }
 
+// joinWithRedirect пытается присоединиться к кластеру, автоматически переходя на лидера
 func joinWithRedirect(joinAddr string, nodeID string, bindAddr string) error {
 	maxRetries := 5
 	for i := 0; i < maxRetries; i++ {
@@ -242,7 +413,8 @@ func joinWithRedirect(joinAddr string, nodeID string, bindAddr string) error {
 	return fmt.Errorf("failed to join after %d attempts", maxRetries)
 }
 
-// HTTP-обработчики
+// ---------- HTTP-обработчики ----------
+
 func listJobsHTTP(w http.ResponseWriter, r *http.Request, sched *scheduler.Scheduler) {
 	jobs := sched.ListJobs()
 	writeJSON(w, octocron.ListJobsResponse{Jobs: jobs})
@@ -254,6 +426,13 @@ func createJobHTTP(w http.ResponseWriter, r *http.Request, sched *scheduler.Sche
 		http.Error(w, "invalid JSON", http.StatusBadRequest)
 		return
 	}
+
+	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor)
+	if _, err := parser.Parse(req.CronExpression); err != nil {
+		http.Error(w, fmt.Sprintf("invalid cron expression: %v", err), http.StatusBadRequest)
+		return
+	}
+
 	job := &octocron.Job{
 		Id:             uuid.New().String(),
 		Name:           req.Name,
@@ -267,6 +446,8 @@ func createJobHTTP(w http.ResponseWriter, r *http.Request, sched *scheduler.Sche
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	log.Printf("Job created: id=%s name=%s cron=%s command=%q targets=%v", job.Id, job.Name, job.CronExpression, job.Command, job.Targets)
 	writeJSON(w, job)
 }
 
@@ -275,6 +456,7 @@ func deleteJobHTTP(w http.ResponseWriter, r *http.Request, sched *scheduler.Sche
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
+	log.Printf("Job deleted: id=%s", jobID)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"result":"ok"}`))
 }
@@ -285,6 +467,9 @@ func getJobHistoryHTTP(w http.ResponseWriter, r *http.Request, sched *scheduler.
 		fmt.Sscanf(l, "%d", &limit)
 	}
 	history := sched.GetJobHistory(jobID, limit)
+	if history == nil {
+		history = make([]*octocron.JobExecution, 0)
+	}
 	writeJSON(w, octocron.ListJobHistoryResponse{History: history})
 }
 
@@ -311,6 +496,7 @@ func addTargetHTTP(w http.ResponseWriter, r *http.Request, sched *scheduler.Sche
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	log.Printf("Target added: id=%s name=%s address=%s:%d user=%s", target.Id, target.Name, target.Address, target.Port, target.User)
 	writeJSON(w, target)
 }
 
@@ -319,6 +505,7 @@ func deleteTargetHTTP(w http.ResponseWriter, r *http.Request, sched *scheduler.S
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
+	log.Printf("Target deleted: id=%s", targetID)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"result":"ok"}`))
 }
